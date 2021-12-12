@@ -2,7 +2,7 @@
 #include <conio.h>
 #include <Windows.h>
 
-HHOOK keyboardHookHandle = NULL;
+HHOOK KeyboardHookHandle = NULL;
 
 bool IsConsoleVisible()
 {
@@ -29,10 +29,10 @@ void WaitKeypress()
 
 BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType)
 {
-	if (keyboardHookHandle)
+	if (KeyboardHookHandle)
 	{
-		UnhookWindowsHookEx(keyboardHookHandle);
-		keyboardHookHandle = NULL;
+		UnhookWindowsHookEx(KeyboardHookHandle);
+		KeyboardHookHandle = NULL;
 		std::cout << "ConsoleCtrlHandler EXIT" << std::endl;
 	}
 
@@ -45,7 +45,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType)
 	return TRUE;
 }
 
-LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK KeyboardHook(int nCode, WPARAM wParam, LPARAM lParam)
 {
 	if (nCode < 0)
 	{
@@ -61,12 +61,25 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
 
 		if (lParamStruct->vkCode == VK_F7)
 		{
-			const bool isAltPressed = GetKeyState(VK_MENU) < 0;
-			const bool isCtrlPressed = GetKeyState(VK_CONTROL) < 0;
-			const bool isShiftPressed = GetKeyState(VK_SHIFT) < 0;
+			if (isKeydown) {
+				const bool isCtrlPressed = GetKeyState(VK_CONTROL) < 0;
+				const bool isShiftPressed = GetKeyState(VK_SHIFT) < 0;
 
-			if (isAltPressed && isCtrlPressed && isShiftPressed) {
-				if (isKeydown) {
+				if (isCtrlPressed && isShiftPressed)
+				{
+					if (IsConsoleVisible())
+					{
+						HideConsole();
+					}
+					else
+					{
+						ShowConsole();
+					}
+
+					std::cout << "ShowWindow TOGGLE" << std::endl;
+				}
+				else
+				{
 					INPUT input = { 0 };
 					input.type = INPUT_MOUSE;
 
@@ -82,29 +95,10 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
 
 					std::cout << "SendInput DOUBLECLICK" << std::endl;
 				}
-
-				std::cout << "CallNextHookEx BLOCKED" << std::endl;
-				return 1;
 			}
 
-			if (isCtrlPressed && isShiftPressed)
-			{
-				if (isKeydown) {
-					if (IsConsoleVisible())
-					{
-						HideConsole();
-					}
-					else
-					{
-						ShowConsole();
-					}
-
-					std::cout << "ShowWindow TOGGLE" << std::endl;
-				}
-
-				std::cout << "CallNextHookEx BLOCKED" << std::endl;
-				return 1;
-			}
+			std::cout << "CallNextHookEx BLOCKED" << std::endl;
+			return 1;
 		}
 	}
 
@@ -118,7 +112,7 @@ int main()
 	HANDLE singleInstanceMutexHandle = CreateMutex(NULL, TRUE, L"double-click-hotkey-mutex-wzyids6rnh94128qrg5t");
 	if (!singleInstanceMutexHandle || GetLastError() == ERROR_ALREADY_EXISTS)
 	{
-		std::cout << "CreateMutex FAIL " << GetLastError() << std::endl;
+		std::cout << "CreateMutex FAIL " << std::endl;
 		ShowConsole();
 		WaitKeypress();
 		return 1;
@@ -132,8 +126,8 @@ int main()
 		return 1;
 	}
 
-	keyboardHookHandle = SetWindowsHookEx(WH_KEYBOARD_LL, &KeyboardHookProc, NULL, 0);
-	if (keyboardHookHandle)
+	KeyboardHookHandle = SetWindowsHookEx(WH_KEYBOARD_LL, &KeyboardHook, NULL, 0);
+	if (KeyboardHookHandle)
 	{
 		std::cout << "SetWindowsHookEx OK" << std::endl;
 	}
@@ -152,8 +146,8 @@ int main()
 
 		if (ret == -1)
 		{
-			UnhookWindowsHookEx(keyboardHookHandle);
-			keyboardHookHandle = NULL;
+			UnhookWindowsHookEx(KeyboardHookHandle);
+			KeyboardHookHandle = NULL;
 			std::cout << "GetMessage FAIL" << std::endl;
 			ShowConsole();
 			WaitKeypress();
@@ -162,8 +156,8 @@ int main()
 
 		if (ret == 0)
 		{
-			UnhookWindowsHookEx(keyboardHookHandle);
-			keyboardHookHandle = NULL;
+			UnhookWindowsHookEx(KeyboardHookHandle);
+			KeyboardHookHandle = NULL;
 			std::cout << "GetMessage WM_QUIT" << std::endl;
 			return 0;
 		}
