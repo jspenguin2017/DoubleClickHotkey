@@ -7,7 +7,7 @@ toggle console visibility.
 
 When running, prevents other applications from receiving <kbd>F7</kbd> unless
 one or more modifier keys (<kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd>,
-or <kbd>Win</kbd>) is pressed.
+or <kbd>Win</kbd>) are pressed.
 
 Copy binary to `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup` to
 have it load on startup.
