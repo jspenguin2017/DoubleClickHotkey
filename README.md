@@ -15,4 +15,4 @@ have it load on startup.
 Intended to be used with Logitech Onboard Memory Manager.
 
 Binary files in the Releases page are built using Visual Studio 2019 Community
-edition.
+Edition.
