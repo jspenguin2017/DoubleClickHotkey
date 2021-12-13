@@ -2,10 +2,12 @@
 
 Press <kbd>F7</kbd> to double click.
 
-Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>F7</kbd> to toggle console
-visibility.
+Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>F7</kbd> to
+toggle console visibility.
 
-Prevents other applications from receiving <kbd>F7</kbd> when running.
+When running, prevents other applications from receiving <kbd>F7</kbd> unless
+one or more modifier keys (<kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd>,
+or <kbd>Win</kbd>) is pressed.
 
 Copy binary to `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup` to
 have it load on startup.
