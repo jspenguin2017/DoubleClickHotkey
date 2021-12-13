@@ -9,6 +9,8 @@ HHOOK KeyboardHookHandle = NULL;
 void WaitKey()
 {
 	cout << "Press any key to continue...";
+
+#pragma warning(suppress: 6031)
 	_getch();
 }
 
@@ -50,22 +52,22 @@ LRESULT CALLBACK KeyboardHookHandler(int nCode, WPARAM wParam, LPARAM lParam)
 		return CallNextHookEx(NULL, nCode, wParam, lParam);
 	}
 
-	const bool isKeydown = wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN;
-	const bool isKeyup = wParam == WM_KEYUP || wParam == WM_SYSKEYUP;
+	const bool isKeyDown = wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN;
+	const bool isKeyUp = wParam == WM_KEYUP || wParam == WM_SYSKEYUP;
 
-	if (isKeydown || isKeyup)
+	if (isKeyDown || isKeyUp)
 	{
 		PKBDLLHOOKSTRUCT lParamStruct = (PKBDLLHOOKSTRUCT)lParam;
 
 		if (lParamStruct->vkCode == VK_F7)
 		{
-			if (isKeydown)
-			{
-				const bool isCtrlPressed = GetKeyState(VK_CONTROL) < 0;
-				const bool isShiftPressed = GetKeyState(VK_SHIFT) < 0;
+			const bool isAltPressed = GetKeyState(VK_MENU) < 0;
+			const bool isCtrlPressed = GetKeyState(VK_CONTROL) < 0;
+			const bool isShiftPressed = GetKeyState(VK_SHIFT) < 0;
 
-				if (isCtrlPressed && isShiftPressed)
-				{
+			if (isAltPressed && isCtrlPressed && isShiftPressed)
+			{
+				if (isKeyDown) {
 					if (IsConsoleVisible())
 					{
 						HideConsole();
@@ -74,10 +76,17 @@ LRESULT CALLBACK KeyboardHookHandler(int nCode, WPARAM wParam, LPARAM lParam)
 					{
 						ShowConsole();
 					}
-
-					std::cout << "ShowWindow TOGGLE" << std::endl;
 				}
-				else
+
+				return 1;
+			}
+
+			const bool isLeftWinPressed = GetKeyState(VK_LWIN) < 0;
+			const bool isRightWinPressed = GetKeyState(VK_RWIN) < 0;
+
+			if (!isAltPressed && !isCtrlPressed && !isShiftPressed && !isLeftWinPressed && !isRightWinPressed)
+			{
+				if (isKeyDown)
 				{
 					INPUT input = { 0 };
 					input.type = INPUT_MOUSE;
@@ -91,13 +100,10 @@ LRESULT CALLBACK KeyboardHookHandler(int nCode, WPARAM wParam, LPARAM lParam)
 					SendInput(1, &input, sizeof(INPUT));
 					input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 					SendInput(1, &input, sizeof(INPUT));
-
-					std::cout << "SendInput DOUBLECLICK" << std::endl;
 				}
-			}
 
-			std::cout << "CallNextHookEx BLOCKED" << std::endl;
-			return 1;
+				return 1;
+			}
 		}
 	}
 
