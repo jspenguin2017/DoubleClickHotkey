@@ -67,7 +67,8 @@ LRESULT CALLBACK KeyboardHookHandler(int nCode, WPARAM wParam, LPARAM lParam)
 
 			if (isAltPressed && isCtrlPressed && isShiftPressed)
 			{
-				if (isKeyDown) {
+				if (isKeyDown)
+				{
 					if (IsConsoleVisible())
 					{
 						HideConsole();
