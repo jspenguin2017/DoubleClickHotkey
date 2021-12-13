@@ -61,7 +61,8 @@ LRESULT CALLBACK KeyboardHook(int nCode, WPARAM wParam, LPARAM lParam)
 
 		if (lParamStruct->vkCode == VK_F7)
 		{
-			if (isKeydown) {
+			if (isKeydown)
+			{
 				const bool isCtrlPressed = GetKeyState(VK_CONTROL) < 0;
 				const bool isShiftPressed = GetKeyState(VK_SHIFT) < 0;
 
