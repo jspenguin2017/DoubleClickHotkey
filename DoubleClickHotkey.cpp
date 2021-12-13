@@ -2,11 +2,30 @@
 #include <conio.h>
 #include <Windows.h>
 
+using namespace std;
+
 HHOOK KeyboardHookHandle = NULL;
+
+void WaitKey()
+{
+	cout << "Press any key to continue...";
+	_getch();
+}
+
+[[noreturn]] void CleanUpExit(int exitCode = 0)
+{
+	if (KeyboardHookHandle)
+	{
+		UnhookWindowsHookEx(KeyboardHookHandle);
+		KeyboardHookHandle = NULL;
+	}
+
+	exit(exitCode);
+}
 
 bool IsConsoleVisible()
 {
-	return IsWindowVisible(GetConsoleWindow());
+	return IsWindowVisible(GetConsoleWindow()) != 0;
 }
 
 void HideConsole()
@@ -19,33 +38,12 @@ void ShowConsole()
 	ShowWindow(GetConsoleWindow(), SW_SHOW);
 }
 
-void WaitKeypress()
-{
-	std::cout << "Press any key to exit...";
-
-#pragma warning(suppress: 6031)
-	_getch();
-}
-
 BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType)
 {
-	if (KeyboardHookHandle)
-	{
-		UnhookWindowsHookEx(KeyboardHookHandle);
-		KeyboardHookHandle = NULL;
-		std::cout << "ConsoleCtrlHandler EXIT" << std::endl;
-	}
-
-	if (dwCtrlType == CTRL_C_EVENT || dwCtrlType == CTRL_BREAK_EVENT)
-	{
-		WaitKeypress();
-	}
-
-	exit(0);
-	return TRUE;
+	CleanUpExit();
 }
 
-LRESULT CALLBACK KeyboardHook(int nCode, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK KeyboardHookHandler(int nCode, WPARAM wParam, LPARAM lParam)
 {
 	if (nCode < 0)
 	{
@@ -110,34 +108,30 @@ int main()
 {
 	HideConsole();
 
-	HANDLE singleInstanceMutexHandle = CreateMutex(NULL, TRUE, L"double-click-hotkey-mutex-wzyids6rnh94128qrg5t");
-	if (!singleInstanceMutexHandle || GetLastError() == ERROR_ALREADY_EXISTS)
+	HANDLE SingleInstanceMutexHandle = CreateMutex(NULL, TRUE, L"double-click-hotkey-mutex-wzyids6rnh94128qrg5t");
+	if (!SingleInstanceMutexHandle || GetLastError() == ERROR_ALREADY_EXISTS)
 	{
-		std::cout << "CreateMutex FAIL " << std::endl;
 		ShowConsole();
-		WaitKeypress();
-		return 1;
+		cout << "Another instance of this application is already running." << endl;
+		WaitKey();
+		CleanUpExit(1);
 	}
 
 	if (!SetConsoleCtrlHandler(&ConsoleCtrlHandler, TRUE))
 	{
-		std::cout << "SetConsoleCtrlHandler FAIL " << GetLastError() << std::endl;
 		ShowConsole();
-		WaitKeypress();
-		return 1;
+		cout << "Failed to set console ctrl handler, error code: " << GetLastError() << endl;
+		WaitKey();
+		CleanUpExit(1);
 	}
 
-	KeyboardHookHandle = SetWindowsHookEx(WH_KEYBOARD_LL, &KeyboardHook, NULL, 0);
-	if (KeyboardHookHandle)
+	KeyboardHookHandle = SetWindowsHookEx(WH_KEYBOARD_LL, &KeyboardHookHandler, NULL, 0);
+	if (!KeyboardHookHandle)
 	{
-		std::cout << "SetWindowsHookEx OK" << std::endl;
-	}
-	else
-	{
-		std::cout << "SetWindowsHookEx FAIL " << GetLastError() << std::endl;
 		ShowConsole();
-		WaitKeypress();
-		return 1;
+		cout << "Failed to set keyboard hook, error code: " << GetLastError() << endl;
+		WaitKey();
+		CleanUpExit(1);
 	}
 
 	MSG msg;
@@ -147,20 +141,15 @@ int main()
 
 		if (ret == -1)
 		{
-			UnhookWindowsHookEx(KeyboardHookHandle);
-			KeyboardHookHandle = NULL;
-			std::cout << "GetMessage FAIL" << std::endl;
 			ShowConsole();
-			WaitKeypress();
-			return 1;
+			cout << "Failed to get message." << endl;
+			WaitKey();
+			CleanUpExit(1);
 		}
 
 		if (ret == 0)
 		{
-			UnhookWindowsHookEx(KeyboardHookHandle);
-			KeyboardHookHandle = NULL;
-			std::cout << "GetMessage WM_QUIT" << std::endl;
-			return 0;
+			CleanUpExit();
 		}
 	} while (true);
 }
