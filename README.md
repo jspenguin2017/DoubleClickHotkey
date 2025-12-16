@@ -7,8 +7,8 @@ modifier keys (<kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd>, or
 Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>F8</kbd> to
 toggle console visibility.
 
-Other applications will not from receiving <kbd>F8</kbd> when one of the
-features above is activated.
+Other applications will not receive <kbd>F8</kbd> when one of the features
+above is activated.
 
 Use Task Manager to add this to startup apps if so desired.
 
