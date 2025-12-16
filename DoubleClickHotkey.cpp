@@ -59,7 +59,7 @@ LRESULT CALLBACK KeyboardHookHandler(int nCode, WPARAM wParam, LPARAM lParam)
 	{
 		PKBDLLHOOKSTRUCT lParamStruct = (PKBDLLHOOKSTRUCT)lParam;
 
-		if (lParamStruct->vkCode == VK_F7)
+		if (lParamStruct->vkCode == VK_F8)
 		{
 			const bool isAltPressed = GetKeyState(VK_MENU) < 0;
 			const bool isCtrlPressed = GetKeyState(VK_CONTROL) < 0;

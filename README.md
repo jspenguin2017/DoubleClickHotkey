@@ -1,11 +1,11 @@
 # Double Click Hotkey
 
-Press <kbd>F7</kbd> to double click.
+Press <kbd>F8</kbd> to double click.
 
-Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>F7</kbd> to
+Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>F8</kbd> to
 toggle console visibility.
 
-When running, prevents other applications from receiving <kbd>F7</kbd> unless
+When running, prevents other applications from receiving <kbd>F8</kbd> unless
 one or more modifier keys (<kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd>,
 or <kbd>Win</kbd>) are pressed.
 
@@ -14,5 +14,5 @@ have it load on startup.
 
 Intended to be used with Logitech Onboard Memory Manager.
 
-Binary files in the Releases page are built using Visual Studio 2019 Community
+Binary files in the Releases page are built using Visual Studio 2026 Community
 Edition.
