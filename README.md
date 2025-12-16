@@ -10,7 +10,7 @@ toggle console visibility.
 Other applications will not receive <kbd>F8</kbd> when one of the features
 above is activated.
 
-Copy binary to `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup` to
+Copy the binary to `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup` to
 have it load on startup.
 
 On Windows 11, hide console only works if the default terminal app is Windows
