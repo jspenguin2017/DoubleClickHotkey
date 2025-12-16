@@ -1,16 +1,19 @@
 # Double Click Hotkey
 
-Press <kbd>F8</kbd> to double click.
+Press <kbd>F8</kbd> to double click. This will not activate if one or more
+modifier keys (<kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd>, or
+<kbd>Win</kbd>) are pressed.
 
 Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>F8</kbd> to
 toggle console visibility.
 
-When running, prevents other applications from receiving <kbd>F8</kbd> unless
-one or more modifier keys (<kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd>,
-or <kbd>Win</kbd>) are pressed.
+Other applications will not from receiving <kbd>F8</kbd> when one of the
+features above is activated.
 
-Copy binary to `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup` to
-have it load on startup.
+Use Task Manager to add this to startup apps if so desired.
+
+On Windows 11, hide console only works if the default terminal app is Windows
+Console Host. This can be changed in the System tab of the Settings app.
 
 Intended to be used with Logitech Onboard Memory Manager.
 
