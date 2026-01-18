@@ -14,7 +14,7 @@ Copy the binary to `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup` to
 have it load on startup.
 
 On Windows 11, hide console only works if the default terminal app is Windows
-Console Host. This can be changed in the System tab of the Settings app.
+Console Host. This can be changed in `Settings > System > Advanced > Terminal`.
 
 Intended to be used with Logitech Onboard Memory Manager.
 
