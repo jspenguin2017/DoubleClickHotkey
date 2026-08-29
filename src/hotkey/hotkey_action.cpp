@@ -9,8 +9,7 @@ HotkeyAction GetHotkeyAction(const ModifierState& modifiers) noexcept
         return HotkeyAction::toggle_console;
     }
 
-    const bool has_modifier = modifiers.alt || modifiers.control || modifiers.shift || modifiers.left_windows ||
-                              modifiers.right_windows;
+    const bool has_modifier = modifiers.alt || modifiers.control || modifiers.shift || modifiers.system;
     return has_modifier ? HotkeyAction::none : HotkeyAction::double_click;
 }
 } // namespace double_click_hotkey

@@ -9,7 +9,7 @@ project(
 
 include(CTest)
 
-option(DOUBLE_CLICK_HOTKEY_BUILD_APP "Build the Windows application" ${WIN32})
+option(DOUBLE_CLICK_HOTKEY_BUILD_APP "Build the application for a supported platform" ${WIN32})
 
 function(double_click_hotkey_enable_warnings target)
     if(MSVC)
@@ -19,7 +19,12 @@ function(double_click_hotkey_enable_warnings target)
     endif()
 endfunction()
 
-add_library(double_click_hotkey_core STATIC src/hotkey_action.cpp)
+add_library(
+    double_click_hotkey_core
+    STATIC
+        src/application/application.cpp
+        src/hotkey/hotkey_action.cpp
+)
 add_library(DoubleClickHotkey::core ALIAS double_click_hotkey_core)
 
 target_compile_features(double_click_hotkey_core PUBLIC cxx_std_17)
@@ -33,14 +38,38 @@ set_target_properties(double_click_hotkey_core PROPERTIES CXX_EXTENSIONS OFF)
 double_click_hotkey_enable_warnings(double_click_hotkey_core)
 
 if(DOUBLE_CLICK_HOTKEY_BUILD_APP)
-    if(NOT WIN32)
-        message(FATAL_ERROR "The application target requires a Windows target toolchain")
+    if(WIN32)
+        set(
+            DOUBLE_CLICK_HOTKEY_PLATFORM_SOURCES
+            src/platform/windows/console.cpp
+            src/platform/windows/console_control_handler.cpp
+            src/platform/windows/keyboard_hook.cpp
+            src/platform/windows/mouse.cpp
+            src/platform/windows/platform_factory.cpp
+            src/platform/windows/single_instance.cpp
+            src/platform/windows/windows_platform_binding.cpp
+        )
+        set(DOUBLE_CLICK_HOTKEY_PLATFORM_LIBRARIES user32)
+    else()
+        message(FATAL_ERROR "No application platform binding is available for ${CMAKE_SYSTEM_NAME}")
     endif()
+
+    add_library(double_click_hotkey_platform STATIC ${DOUBLE_CLICK_HOTKEY_PLATFORM_SOURCES})
+    add_library(DoubleClickHotkey::platform ALIAS double_click_hotkey_platform)
+    target_compile_features(double_click_hotkey_platform PUBLIC cxx_std_17)
+    target_compile_definitions(double_click_hotkey_platform PRIVATE NOMINMAX UNICODE WIN32_LEAN_AND_MEAN _UNICODE)
+    target_include_directories(double_click_hotkey_platform PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        double_click_hotkey_platform
+        PUBLIC DoubleClickHotkey::core
+        PRIVATE ${DOUBLE_CLICK_HOTKEY_PLATFORM_LIBRARIES}
+    )
+    set_target_properties(double_click_hotkey_platform PROPERTIES CXX_EXTENSIONS OFF)
+    double_click_hotkey_enable_warnings(double_click_hotkey_platform)
 
     add_executable(double_click_hotkey src/main.cpp)
     target_compile_features(double_click_hotkey PRIVATE cxx_std_17)
-    target_compile_definitions(double_click_hotkey PRIVATE NOMINMAX UNICODE WIN32_LEAN_AND_MEAN _UNICODE)
-    target_link_libraries(double_click_hotkey PRIVATE DoubleClickHotkey::core user32)
+    target_link_libraries(double_click_hotkey PRIVATE DoubleClickHotkey::platform)
     set_target_properties(double_click_hotkey PROPERTIES CXX_EXTENSIONS OFF OUTPUT_NAME DoubleClickHotkey)
     double_click_hotkey_enable_warnings(double_click_hotkey)
 
@@ -53,10 +82,28 @@ endif()
 
 set(
     DOUBLE_CLICK_HOTKEY_FORMAT_FILES
+    "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/application.hpp"
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/hotkey_action.hpp"
-    "${PROJECT_SOURCE_DIR}/src/hotkey_action.cpp"
+    "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/platform_binding.hpp"
+    "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/platform_factory.hpp"
+    "${PROJECT_SOURCE_DIR}/src/application/application.cpp"
+    "${PROJECT_SOURCE_DIR}/src/hotkey/hotkey_action.cpp"
     "${PROJECT_SOURCE_DIR}/src/main.cpp"
-    "${PROJECT_SOURCE_DIR}/tests/hotkey_action_test.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/console.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/console.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/console_control_handler.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/console_control_handler.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_hook.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_hook.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/mouse.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/mouse.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/platform_factory.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/single_instance.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/single_instance.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/windows_platform_binding.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/windows_platform_binding.hpp"
+    "${PROJECT_SOURCE_DIR}/tests/application/application_test.cpp"
+    "${PROJECT_SOURCE_DIR}/tests/hotkey/hotkey_action_test.cpp"
 )
 include(cmake/ClangFormat.cmake)
 

@@ -18,8 +18,12 @@ The application supports only the latest generally available Windows 11 release.
 supported. It can be built with MinGW-w64 on Windows or cross-compiled from Linux, but the resulting executable is
 intended to run only on Windows 11.
 
-A native Linux build compiles the platform-independent core and its tests without creating the Windows application. This
-gives Linux development tools and CI a native target in addition to the full MinGW-w64 cross-build.
+A native Linux build compiles the platform-independent application controller and hotkey policy, then runs both through
+a fake platform binding without creating the Windows application. This gives Linux development tools and CI a native
+target in addition to the full MinGW-w64 cross-build.
+
+The application depends on the abstract `PlatformBinding` interface rather than Win32 directly. CMake currently selects
+the Windows binding, while the platform-neutral entry point and controller can be reused by future bindings.
 
 ## Requirements
 
@@ -103,11 +107,13 @@ the initial configure step if the installed toolchain uses a different prefix.
 
 ## Tests
 
-Tests use GoogleTest 1.18.0, pinned to a specific upstream revision and archive checksum. Test sources live in `tests/`
-and link against the platform-independent `DoubleClickHotkey::core` CMake target.
+Tests use GoogleTest 1.18.0, pinned to a specific upstream revision and archive checksum. Test sources are grouped by
+domain under `tests/` and link against the platform-independent `DoubleClickHotkey::core` CMake target.
 
-Add future production source files to `double_click_hotkey_core` in `CMakeLists.txt`, or to the `double_click_hotkey`
-executable when they directly depend on Windows APIs. This keeps core behavior testable on both platforms.
+Portable application behavior belongs in `double_click_hotkey_core`. Native APIs belong in a platform adapter such as
+`src/platform/windows/`, which implements `PlatformBinding` and supplies `CreatePlatformBinding()`. To support another
+operating system, add its adapter and select its sources and native libraries in the platform section of
+`CMakeLists.txt`; the application controller and `src/main.cpp` do not need platform-specific changes.
 
 ## Formatting
 
@@ -137,10 +143,13 @@ configure the preset again so CMake can add the formatting targets.
 ## Project layout
 
 ```text
-cmake/      CMake helpers and cross-compilation toolchains
-include/    Public, platform-independent headers
-src/        Application and library implementation files
-tests/      GoogleTest targets
+cmake/                  CMake helpers and cross-compilation toolchains
+include/                Public, platform-independent contracts and hotkey policy
+src/application/        Application orchestration
+src/hotkey/             Modifier-to-action policy implementation
+src/platform/windows/   Win32 platform binding and native service adapters
+src/main.cpp             Platform-neutral composition root
+tests/                   Domain-grouped GoogleTest coverage
 ```
 
 ## Run at startup

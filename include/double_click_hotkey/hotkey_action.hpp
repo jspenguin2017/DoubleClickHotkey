@@ -7,8 +7,7 @@ struct ModifierState
     bool alt = false;
     bool control = false;
     bool shift = false;
-    bool left_windows = false;
-    bool right_windows = false;
+    bool system = false;
 };
 
 enum class HotkeyAction
