@@ -52,22 +52,22 @@ first time CMake configures the project, so that first configuration needs netwo
 Document formatting needs Node.js 20 or newer and npm. Node.js 22.12 or newer is recommended for development.
 `clang-format` is only required for the C++ formatting targets and is not required to compile the project.
 
-## npm shortcuts
+## `npm` shortcuts
 
 After installing the locked npm dependencies with `npm install`, the following commands select the appropriate CMake
 presets for the host platform:
 
 ```sh
 npm run build
-npm test
+npm run test
 npm run format
 npm run format:check
 ```
 
 `npm run build` creates both Debug and Release Windows application builds. On Linux it uses the MinGW-w64 cross-build
-presets; on Windows it uses the native MinGW-w64 presets. `npm test` builds and runs the portable native tests on Linux
-or the Windows tests on Windows. The formatting commands run both Prettier and the corresponding CMake `clang-format`
-target.
+presets; on Windows it uses the native MinGW-w64 presets. `npm run test` builds and runs the portable native tests on
+Linux or the Windows tests on Windows. The formatting commands run both Prettier and the corresponding CMake
+`clang-format` target.
 
 ## Build on Windows
 
