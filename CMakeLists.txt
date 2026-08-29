@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.28)
 
 project(
     DoubleClickHotkey
@@ -63,14 +63,12 @@ include(cmake/ClangFormat.cmake)
 if(BUILD_TESTING)
     include(FetchContent)
 
-    set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
-    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_Declare(
         googletest
-        URL https://github.com/google/googletest/archive/52eb8108c5bdec04579160ae17225d66034bd723.tar.gz
-        URL_HASH SHA256=745c55415660044610f7fcd3af7a6420d5de16a7dbb9ebfe2e131275676232be
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        URL https://github.com/google/googletest/archive/063de7e9578f82b369302001269680b4b1553359.tar.gz
+        URL_HASH SHA256=623fe05d283020f37a579a8985ba338091ac7229da62b5591ff40acdf05b95e2
+        EXCLUDE_FROM_ALL
     )
     FetchContent_MakeAvailable(googletest)
 

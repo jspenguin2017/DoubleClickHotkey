@@ -1,6 +1,6 @@
 # Double Click Hotkey
 
-Double Click Hotkey is a small Windows utility that turns <kbd>F8</kbd> into a global double-click shortcut.
+Double Click Hotkey is a small Windows 11 utility that turns <kbd>F8</kbd> into a global double-click shortcut.
 
 ## Behavior
 
@@ -14,8 +14,9 @@ Only one copy of the application can run at a time.
 
 ## Platform support
 
-The application is a Windows program. It can be built with MinGW-w64 on Windows or cross-compiled from Linux, but the
-resulting executable only runs on Windows.
+The application supports only the latest generally available Windows 11 release. Older Windows releases are not
+supported. It can be built with MinGW-w64 on Windows or cross-compiled from Linux, but the resulting executable is
+intended to run only on Windows 11.
 
 A native Linux build compiles the platform-independent core and its tests without creating the Windows application. This
 gives Linux development tools and CI a native target in addition to the full MinGW-w64 cross-build.
@@ -24,7 +25,7 @@ gives Linux development tools and CI a native target in addition to the full Min
 
 All build environments need:
 
-- CMake 3.25 or newer
+- CMake 3.28 or newer
 - Ninja
 - A compiler with C++17 support
 
@@ -102,7 +103,7 @@ the initial configure step if the installed toolchain uses a different prefix.
 
 ## Tests
 
-Tests use GoogleTest 1.17.0, pinned to a specific upstream revision and archive checksum. Test sources live in `tests/`
+Tests use GoogleTest 1.18.0, pinned to a specific upstream revision and archive checksum. Test sources live in `tests/`
 and link against the platform-independent `DoubleClickHotkey::core` CMake target.
 
 Add future production source files to `double_click_hotkey_core` in `CMakeLists.txt`, or to the `double_click_hotkey`

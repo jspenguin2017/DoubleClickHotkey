@@ -1,7 +1,7 @@
 # AGENTS.md
 
-Double Click Hotkey is a C++17 Windows utility that turns F8 into a global double-click shortcut. CMake also exposes the
-platform-independent hotkey policy as a library so it can be built and tested natively on Linux.
+Double Click Hotkey is a C++17 Windows 11 utility that turns F8 into a global double-click shortcut. CMake also exposes
+the platform-independent hotkey policy as a library so it can be built and tested natively on Linux.
 
 ## Repository Map
 
@@ -25,7 +25,7 @@ platform-independent hotkey policy as a library so it can be built and tested na
 
 ## Common Commands
 
-Run commands from the repository root. Node.js 22.12 or newer is preferred; CMake requires version 3.25 or newer.
+Run commands from the repository root. Node.js 22.12 or newer is preferred; CMake requires version 3.28 or newer.
 
 - Install the locked document-formatting dependency with `npm install`.
 - Format supported documentation and configuration files with `npm run format`. Use `npm run format:nocache` when a full
