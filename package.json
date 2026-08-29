@@ -3,14 +3,8 @@
   "devDependencies": {
     "prettier": "3.9.6"
   },
-  "devEngines": {
-    "runtime": {
-      "name": "node",
-      "version": ">=22.12.0"
-    }
-  },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.19.0"
   },
   "license": "MIT",
   "name": "double-click-hotkey",
@@ -20,9 +14,10 @@
     "url": "git+https://github.com/jspenguin2017/DoubleClickHotkey.git"
   },
   "scripts": {
-    "format": "prettier --write --cache --cache-strategy metadata .",
-    "format:check": "prettier --check --cache --cache-strategy metadata .",
-    "format:nocache": "prettier --write ."
+    "build": "node scripts/cmake.mjs build",
+    "format": "prettier --write . && node scripts/cmake.mjs format",
+    "format:check": "prettier --check . && node scripts/cmake.mjs format-check",
+    "test": "node scripts/cmake.mjs test"
   },
   "version": "1.0.0"
 }

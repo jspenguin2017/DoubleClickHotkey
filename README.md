@@ -52,6 +52,23 @@ first time CMake configures the project, so that first configuration needs netwo
 Document formatting needs Node.js 20 or newer and npm. Node.js 22.12 or newer is recommended for development.
 `clang-format` is only required for the C++ formatting targets and is not required to compile the project.
 
+## npm shortcuts
+
+After installing the locked npm dependencies with `npm install`, the following commands select the appropriate CMake
+presets for the host platform:
+
+```sh
+npm run build
+npm test
+npm run format
+npm run format:check
+```
+
+`npm run build` creates both Debug and Release Windows application builds. On Linux it uses the MinGW-w64 cross-build
+presets; on Windows it uses the native MinGW-w64 presets. `npm test` builds and runs the portable native tests on Linux
+or the Windows tests on Windows. The formatting commands run both Prettier and the corresponding CMake `clang-format`
+target.
+
 ## Build on Windows
 
 Run these commands from a terminal where MinGW-w64's `gcc` and `g++`, CMake, and Ninja are on `PATH`:
@@ -123,22 +140,22 @@ Install the locked document formatter once:
 npm install
 ```
 
-Prettier formats supported documents and configuration files; it does not format the C++ source:
+Format supported documents, configuration files, and C++ sources with:
 
 ```sh
 npm run format
 npm run format:check
 ```
 
-After configuring any CMake preset on a machine with `clang-format`, format or check all C++ source and test files with:
+The npm commands configure the platform's development preset before invoking CMake. To run the C++ formatting targets
+directly after configuring a preset, use:
 
 ```sh
 cmake --build --preset linux-native-debug --target format
 cmake --build --preset linux-native-debug --target format-check
 ```
 
-Replace `linux-native-debug` with any configured build preset. If `clang-format` was installed after configuring CMake,
-configure the preset again so CMake can add the formatting targets.
+Replace `linux-native-debug` with any configured build preset.
 
 ## Project layout
 
@@ -149,6 +166,7 @@ src/application/        Application orchestration
 src/hotkey/             Modifier-to-action policy implementation
 src/platform/windows/   Win32 platform binding and native service adapters
 src/main.cpp             Platform-neutral composition root
+scripts/                 Cross-platform npm command helpers
 tests/                   Domain-grouped GoogleTest coverage
 ```
 
