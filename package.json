@@ -1,0 +1,27 @@
+{
+  "description": "Turn F8 into a global Windows double-click hotkey.",
+  "devDependencies": {
+    "prettier": "3.9.6"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=22.12.0"
+    }
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT",
+  "name": "double-click-hotkey",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jspenguin2017/DoubleClickHotkey.git"
+  },
+  "scripts": {
+    "format": "prettier --write --cache --cache-strategy metadata .",
+    "format:check": "prettier --check --cache --cache-strategy metadata ."
+  },
+  "version": "1.0.0"
+}

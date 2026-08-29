@@ -1,0 +1,9 @@
+---
+BasedOnStyle: Microsoft
+ColumnLimit: 120
+IndentWidth: 4
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+SortIncludes: CaseSensitive
+TabWidth: 4
+UseTab: Never
