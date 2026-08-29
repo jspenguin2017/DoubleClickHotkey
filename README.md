@@ -38,7 +38,7 @@ Linux development uses:
 On Debian or Ubuntu, the C++ build tools can be installed with:
 
 ```sh
-sudo apt install cmake ninja-build g++ mingw-w64 clang-format
+sudo apt install clang-format cmake g++ mingw-w64 ninja-build
 ```
 
 GoogleTest does not need a separate installation. Debug configurations download the pinned GoogleTest dependency the
