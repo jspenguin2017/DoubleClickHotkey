@@ -3,9 +3,8 @@
 /compile_commands.json
 CMakeUserPresets.json
 
-# Node.js dependencies and logs
+# Node.js dependencies
 /node_modules/
-npm-debug.log*
 
 # Tool caches
 /.cache/
