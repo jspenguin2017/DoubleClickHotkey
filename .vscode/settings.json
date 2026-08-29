@@ -1,3 +1,15 @@
 {
-  "cSpell.words": ["ctest", "nocache", "werror", "windres"]
+  "cSpell.words": [
+    "ctest",
+    "endfunction",
+    "libgcc",
+    "libstdc",
+    "msvc",
+    "nocache",
+    "nominmax",
+    "werror",
+    "wextra",
+    "windres",
+    "wpedantic"
+  ]
 }
