@@ -21,7 +21,8 @@
   },
   "scripts": {
     "format": "prettier --write --cache --cache-strategy metadata .",
-    "format:check": "prettier --check --cache --cache-strategy metadata ."
+    "format:check": "prettier --check --cache --cache-strategy metadata .",
+    "format:nocache": "prettier --write ."
   },
   "version": "1.0.0"
 }
