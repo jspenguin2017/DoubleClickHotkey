@@ -108,8 +108,9 @@ set(
     "${PROJECT_SOURCE_DIR}/src/platform/windows/single_instance.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/windows_platform_binding.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/windows_platform_binding.hpp"
-    "${PROJECT_SOURCE_DIR}/tests/application/application_test.cpp"
-    "${PROJECT_SOURCE_DIR}/tests/application/launch_command_test.cpp"
+    "${PROJECT_SOURCE_DIR}/tests/application/application.test.cpp"
+    "${PROJECT_SOURCE_DIR}/tests/application/launch_command.test.cpp"
+    "${PROJECT_SOURCE_DIR}/tests/main.test.cpp"
 )
 include(cmake/ClangFormat.cmake)
 
