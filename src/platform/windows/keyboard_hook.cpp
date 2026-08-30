@@ -27,13 +27,20 @@ bool KeyboardHook::Install(HotkeyEventHandler handler)
         return false;
     }
 
+    const HMODULE executable_module = GetModuleHandleW(nullptr);
+    if (executable_module == nullptr)
+    {
+        last_error_code_ = GetLastError();
+        return false;
+    }
+
     MSG message{};
     static_cast<void>(PeekMessageW(&message, nullptr, WM_USER, WM_USER, PM_NOREMOVE));
 
     handler_ = std::move(handler);
     owner_thread_id_ = GetCurrentThreadId();
     active_hook_ = this;
-    handle_ = SetWindowsHookExW(WH_KEYBOARD_LL, &HandleKeyboardEvent, nullptr, 0);
+    handle_ = SetWindowsHookExW(WH_KEYBOARD_LL, &HandleKeyboardEvent, executable_module, 0);
     if (handle_ == nullptr)
     {
         last_error_code_ = GetLastError();
