@@ -27,7 +27,11 @@ bool KeyboardHook::Install(HotkeyEventHandler handler)
         return false;
     }
 
+    MSG message{};
+    static_cast<void>(PeekMessageW(&message, nullptr, WM_USER, WM_USER, PM_NOREMOVE));
+
     handler_ = std::move(handler);
+    owner_thread_id_ = GetCurrentThreadId();
     active_hook_ = this;
     handle_ = SetWindowsHookExW(WH_KEYBOARD_LL, &HandleKeyboardEvent, nullptr, 0);
     if (handle_ == nullptr)
@@ -35,11 +39,32 @@ bool KeyboardHook::Install(HotkeyEventHandler handler)
         last_error_code_ = GetLastError();
         active_hook_ = nullptr;
         handler_ = {};
+        owner_thread_id_ = 0;
         return false;
     }
 
     last_error_code_ = ERROR_SUCCESS;
+    hotkey_is_pressed_ = false;
+    event_queue_failed_ = false;
     return true;
+}
+
+bool KeyboardHook::HandleQueuedEvent(const MSG& message)
+{
+    if (message.hwnd != nullptr || message.message != HotkeyEventMessage ||
+        (message.wParam != static_cast<WPARAM>(KeyTransition::pressed) &&
+         message.wParam != static_cast<WPARAM>(KeyTransition::released)))
+    {
+        return false;
+    }
+
+    handler_({static_cast<KeyTransition>(message.wParam)});
+    return true;
+}
+
+bool KeyboardHook::EventQueueFailed() const noexcept
+{
+    return event_queue_failed_;
 }
 
 DWORD KeyboardHook::LastErrorCode() const noexcept
@@ -77,12 +102,30 @@ LRESULT KeyboardHook::DispatchKeyboardEvent(const int code, const WPARAM message
         return CallNextHookEx(handle_, code, message, data);
     }
 
-    const HotkeyEvent event{is_key_down ? KeyTransition::pressed : KeyTransition::released};
-    if (handler_(event))
+    if (is_key_down)
     {
+        if (!hotkey_is_pressed_)
+        {
+            hotkey_is_pressed_ = true;
+            QueueEvent(KeyTransition::pressed);
+        }
         return 1;
     }
 
-    return CallNextHookEx(handle_, code, message, data);
+    if (hotkey_is_pressed_)
+    {
+        hotkey_is_pressed_ = false;
+        QueueEvent(KeyTransition::released);
+    }
+    return 1;
+}
+
+void KeyboardHook::QueueEvent(const KeyTransition transition) noexcept
+{
+    if (PostThreadMessageW(owner_thread_id_, HotkeyEventMessage, static_cast<WPARAM>(transition), 0) == 0)
+    {
+        last_error_code_ = GetLastError();
+        event_queue_failed_ = true;
+    }
 }
 } // namespace double_click_hotkey::windows

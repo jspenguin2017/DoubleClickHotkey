@@ -47,7 +47,7 @@ int Application::RunService()
     platform_.SetWindowVisibility(WindowVisibility::hidden);
 
     const PlatformResult result =
-        platform_.RunService([this](const HotkeyEvent& event) { return HandleHotkeyEvent(event); },
+        platform_.RunService([this](const HotkeyEvent& event) { HandleHotkeyEvent(event); },
                              [this](const WindowVisibility visibility) { HandleWindowVisibility(visibility); });
     if (result.status == PlatformResultStatus::success)
     {
@@ -107,22 +107,21 @@ int Application::SendF13AfterDelay()
     return 0;
 }
 
-bool Application::HandleHotkeyEvent(const HotkeyEvent& event)
+void Application::HandleHotkeyEvent(const HotkeyEvent& event)
 {
     if (event.transition == KeyTransition::released)
     {
         hotkey_is_pressed_ = false;
-        return true;
+        return;
     }
 
     if (hotkey_is_pressed_)
     {
-        return true;
+        return;
     }
 
     hotkey_is_pressed_ = true;
     ReportResultError(platform_.DoubleClick());
-    return true;
 }
 
 void Application::HandleWindowVisibility(const WindowVisibility visibility)

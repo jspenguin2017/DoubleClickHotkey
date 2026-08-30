@@ -169,6 +169,12 @@ PlatformResult WindowsPlatformBinding::RunMessageLoop(HotkeyEventHandler hotkey_
     {
         const DWORD result = MsgWaitForMultipleObjectsEx(static_cast<DWORD>(event_handles.size()), event_handles.data(),
                                                          INFINITE, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+        if (keyboard_hook.EventQueueFailed())
+        {
+            return {PlatformResultStatus::failure,
+                    FormatError("Failed to queue a hotkey event", keyboard_hook.LastErrorCode())};
+        }
+
         const DWORD first_event_result = WAIT_OBJECT_0;
         const DWORD message_result = first_event_result + static_cast<DWORD>(event_handles.size());
         if (result >= first_event_result && result < message_result)
@@ -191,12 +197,27 @@ PlatformResult WindowsPlatformBinding::RunMessageLoop(HotkeyEventHandler hotkey_
         MSG message{};
         while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
         {
+            if (keyboard_hook.EventQueueFailed())
+            {
+                return {PlatformResultStatus::failure,
+                        FormatError("Failed to queue a hotkey event", keyboard_hook.LastErrorCode())};
+            }
             if (message.message == WM_QUIT)
             {
                 return {};
             }
+            if (keyboard_hook.HandleQueuedEvent(message))
+            {
+                continue;
+            }
             static_cast<void>(TranslateMessage(&message));
             static_cast<void>(DispatchMessageW(&message));
+        }
+
+        if (keyboard_hook.EventQueueFailed())
+        {
+            return {PlatformResultStatus::failure,
+                    FormatError("Failed to queue a hotkey event", keyboard_hook.LastErrorCode())};
         }
     }
 }

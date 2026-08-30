@@ -18,8 +18,9 @@ struct HotkeyEvent
     KeyTransition transition = KeyTransition::pressed;
 };
 
-// Returning true tells the binding to suppress the native hotkey transition.
-using HotkeyEventHandler = std::function<bool(const HotkeyEvent&)>;
+// The binding suppresses native hotkey transitions, queues their semantic events, and invokes this handler only after
+// any time-limited native input callback has returned.
+using HotkeyEventHandler = std::function<void(const HotkeyEvent&)>;
 
 enum class WindowVisibility
 {

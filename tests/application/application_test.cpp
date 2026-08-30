@@ -20,7 +20,7 @@ class FakePlatformBinding final : public PlatformBinding
         ++run_service_count;
         for (const HotkeyEvent& event : hotkey_events)
         {
-            handled_hotkey_events.push_back(hotkey_handler(event));
+            hotkey_handler(event);
         }
         for (const WindowVisibility visibility : received_window_commands)
         {
@@ -84,7 +84,6 @@ class FakePlatformBinding final : public PlatformBinding
     PlatformResult send_f13_result;
     PlatformResult double_click_result;
     std::vector<HotkeyEvent> hotkey_events;
-    std::vector<bool> handled_hotkey_events;
     std::vector<WindowVisibility> received_window_commands;
     std::vector<WindowVisibility> sent_window_commands;
     std::vector<WindowVisibility> window_visibility_changes;
@@ -249,7 +248,7 @@ TEST(ApplicationTest, ReportsUsageForAnInvalidLaunchCommand)
     ExpectErrorReported(platform, "Usage: DoubleClickHotkey [--show | --hide | --send-f13]", false);
 }
 
-TEST(ApplicationTest, DoubleClicksAndConsumesAKeyPress)
+TEST(ApplicationTest, DoubleClicksForAKeyPress)
 {
     FakePlatformBinding platform;
     platform.hotkey_events.push_back({KeyTransition::pressed});
@@ -258,8 +257,6 @@ TEST(ApplicationTest, DoubleClicksAndConsumesAKeyPress)
     static_cast<void>(application.Run());
 
     EXPECT_EQ(platform.double_click_count, 1);
-    ASSERT_EQ(platform.handled_hotkey_events.size(), 1U);
-    EXPECT_TRUE(platform.handled_hotkey_events.front());
 }
 
 TEST(ApplicationTest, DoubleClicksOnlyOncePerPhysicalPress)
@@ -274,10 +271,9 @@ TEST(ApplicationTest, DoubleClicksOnlyOncePerPhysicalPress)
     static_cast<void>(application.Run());
 
     EXPECT_EQ(platform.double_click_count, 2);
-    EXPECT_EQ(platform.handled_hotkey_events, (std::vector<bool>{true, true, true, true, true, true}));
 }
 
-TEST(ApplicationTest, ConsumesAHotkeyReleaseWithoutRepeatingItsAction)
+TEST(ApplicationTest, DoesNotDoubleClickForAHotkeyRelease)
 {
     FakePlatformBinding platform;
     platform.hotkey_events.push_back({KeyTransition::released});
@@ -286,11 +282,9 @@ TEST(ApplicationTest, ConsumesAHotkeyReleaseWithoutRepeatingItsAction)
     static_cast<void>(application.Run());
 
     EXPECT_EQ(platform.double_click_count, 0);
-    ASSERT_EQ(platform.handled_hotkey_events.size(), 1U);
-    EXPECT_TRUE(platform.handled_hotkey_events.front());
 }
 
-TEST(ApplicationTest, ReportsADoubleClickInjectionFailureAndStillConsumesTheHotkey)
+TEST(ApplicationTest, ReportsADoubleClickInjectionFailure)
 {
     FakePlatformBinding platform;
     platform.hotkey_events.push_back({KeyTransition::pressed});
@@ -300,8 +294,6 @@ TEST(ApplicationTest, ReportsADoubleClickInjectionFailureAndStillConsumesTheHotk
     static_cast<void>(application.Run());
 
     ExpectErrorReported(platform, "double-click failed", false);
-    ASSERT_EQ(platform.handled_hotkey_events.size(), 1U);
-    EXPECT_TRUE(platform.handled_hotkey_events.front());
 }
 } // namespace
 } // namespace double_click_hotkey
