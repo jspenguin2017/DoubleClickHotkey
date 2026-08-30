@@ -4,6 +4,7 @@ namespace double_click_hotkey::windows
 {
 SingleInstance::SingleInstance(const wchar_t* const name) noexcept
 {
+    SetLastError(ERROR_SUCCESS);
     mutex_ = CreateMutexW(nullptr, TRUE, name);
     if (mutex_ == nullptr)
     {

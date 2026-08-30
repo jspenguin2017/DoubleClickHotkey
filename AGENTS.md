@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Double Click Hotkey is a C++17 Windows 11 utility that turns F8 into a global double-click shortcut. CMake also exposes
+Double Click Hotkey is a C++17 Windows 11 utility that turns F13 into a global double-click shortcut. CMake also exposes
 the platform-independent application controller and hotkey policy as a library so they can be built and tested natively
 on Linux.
 
@@ -8,15 +8,17 @@ on Linux.
 
 - `src/main.cpp` is the platform-neutral composition root. It creates the selected platform binding and runs the
   application controller.
-- `include/double_click_hotkey/application.hpp` and `src/application/application.cpp` define portable application
-  orchestration over the abstract platform contract.
+- `include/double_click_hotkey/application.hpp`, `include/double_click_hotkey/launch_command.hpp`, and their sources
+  under `src/application/` define portable launch parsing and application orchestration over the abstract platform
+  contract.
 - `include/double_click_hotkey/platform_binding.hpp` defines the input/output boundary implemented by native adapters;
   `include/double_click_hotkey/platform_factory.hpp` declares the CMake-selected binding factory.
 - `include/double_click_hotkey/hotkey_action.hpp` declares the portable modifier-to-action API.
 - `src/hotkey/hotkey_action.cpp` implements that API and is compiled into the `DoubleClickHotkey::core` static library.
-- `src/platform/windows/` contains the Win32 binding, divided into console, control-handler, keyboard-hook, mouse, and
-  single-instance components. No Win32 APIs belong in the portable application or hotkey domains.
-- `tests/application/application_test.cpp` verifies orchestration through a fake binding, while
+- `src/platform/windows/` contains the Win32 binding, divided into console, control-handler, instance-command,
+  keyboard-hook, keyboard-sender, mouse, and single-instance components. No Win32 APIs belong in the portable
+  application or hotkey domains.
+- `tests/application/` verifies launch parsing and orchestration through a fake binding, while
   `tests/hotkey/hotkey_action_test.cpp` covers the portable hotkey policy; `tests/CMakeLists.txt` defines the test
   executable.
 - `CMakeLists.txt` defines the core library, the CMake-selected platform adapter, optional application, GoogleTest

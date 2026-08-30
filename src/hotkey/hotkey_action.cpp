@@ -2,14 +2,8 @@
 
 namespace double_click_hotkey
 {
-HotkeyAction GetHotkeyAction(const ModifierState& modifiers) noexcept
+HotkeyAction GetHotkeyAction(const ModifierState&) noexcept
 {
-    if (modifiers.alt && modifiers.control && modifiers.shift)
-    {
-        return HotkeyAction::toggle_console;
-    }
-
-    const bool has_modifier = modifiers.alt || modifiers.control || modifiers.shift || modifiers.system;
-    return has_modifier ? HotkeyAction::none : HotkeyAction::double_click;
+    return HotkeyAction::double_click;
 }
 } // namespace double_click_hotkey

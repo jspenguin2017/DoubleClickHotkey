@@ -1,5 +1,5 @@
 {
-  "description": "Turn F8 into a global Windows double-click hotkey.",
+  "description": "Turn F13 into a global Windows double-click hotkey.",
   "devDependencies": {
     "prettier": "3.9.6"
   },

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "double_click_hotkey/hotkey_action.hpp"
+#include "double_click_hotkey/launch_command.hpp"
 
 #include <functional>
 
@@ -31,10 +32,9 @@ class PlatformBinding
     PlatformBinding(PlatformBinding&&) = delete;
     PlatformBinding& operator=(PlatformBinding&&) = delete;
 
-    // The binding owns its native lifecycle and invokes the handler only while Run is active.
-    [[nodiscard]] virtual int Run(HotkeyEventHandler handler) = 0;
+    // The binding owns its native lifecycle and invokes the handler only while the normal run command is active.
+    [[nodiscard]] virtual int Run(LaunchCommand launch_command, HotkeyEventHandler handler) = 0;
     virtual void DoubleClick() = 0;
-    virtual void ToggleConsoleVisibility() = 0;
 
   protected:
     PlatformBinding() = default;

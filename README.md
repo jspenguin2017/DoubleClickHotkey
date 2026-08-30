@@ -1,16 +1,36 @@
 # Double Click Hotkey
 
-Double Click Hotkey is a small Windows 11 utility that turns <kbd>F8</kbd> into a global double-click shortcut.
+Double Click Hotkey is a small Windows 11 utility that turns <kbd>F13</kbd> into a global double-click shortcut.
 
 ## Behavior
 
-Press <kbd>F8</kbd> to double-click. The shortcut does not activate while <kbd>Ctrl</kbd>, <kbd>Shift</kbd>,
-<kbd>Alt</kbd>, or either <kbd>Win</kbd> key is pressed.
+Press <kbd>F13</kbd> to double-click. The application consumes F13 and performs the double-click regardless of whether
+<kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd>, or either <kbd>Win</kbd> key is pressed.
 
-Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>F8</kbd> to toggle the console window. Other
-applications do not receive <kbd>F8</kbd> when either shortcut is activated.
+The console window is hidden when the application starts normally. Use the command-line options below to show or hide
+the running application's window; there is no keyboard shortcut for changing its visibility.
 
-Only one copy of the application can run at a time.
+Only one hotkey-service instance can run at a time. The show and hide commands are short-lived control clients.
+
+## Command line
+
+The executable accepts one optional command-line argument:
+
+```text
+DoubleClickHotkey.exe --show
+DoubleClickHotkey.exe --hide
+DoubleClickHotkey.exe --send-f13
+```
+
+`--show` and `--hide` instruct the running instance to show or hide its console, then exit. They report an error when no
+instance is running.
+
+`--send-f13` requires that no instance is running. It waits five seconds and then sends one F13 press, making it
+possible to select F13 as a hotkey in applications such as Logitech Onboard Memory Manager even though a typical
+physical keyboard has no F13 key. The delay gives you time to focus the hotkey field in the target application.
+
+Any invocation with a command-line argument keeps its own console visible. An invocation without arguments hides its
+console immediately to avoid a startup flash.
 
 ## Platform support
 
@@ -128,8 +148,8 @@ Tests use GoogleTest 1.18.0, pinned to a specific upstream revision and archive 
 domain under `tests/` and link against the platform-independent `DoubleClickHotkey::core` CMake target.
 
 Portable application behavior belongs in `double_click_hotkey_core`. Native APIs belong in a platform adapter such as
-`src/platform/windows/`, which implements `PlatformBinding` and supplies `CreatePlatformBinding()`. To support another
-operating system, add its adapter and select its sources and native libraries in the platform section of
+`src/platform/windows/`, which implements `PlatformBinding` and supplies the platform-binding factory. To support
+another operating system, add its adapter and select its sources and native libraries in the platform section of
 `CMakeLists.txt`; the application controller and `src/main.cpp` do not need platform-specific changes.
 
 ## Formatting

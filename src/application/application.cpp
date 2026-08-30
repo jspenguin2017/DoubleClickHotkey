@@ -4,13 +4,14 @@
 
 namespace double_click_hotkey
 {
-Application::Application(PlatformBinding& platform) noexcept : platform_(platform)
+Application::Application(PlatformBinding& platform, const LaunchCommand launch_command) noexcept
+    : platform_(platform), launch_command_(launch_command)
 {
 }
 
 int Application::Run()
 {
-    return platform_.Run([this](const HotkeyEvent& event) { return HandleHotkeyEvent(event); });
+    return platform_.Run(launch_command_, [this](const HotkeyEvent& event) { return HandleHotkeyEvent(event); });
 }
 
 bool Application::HandleHotkeyEvent(const HotkeyEvent& event)
@@ -27,10 +28,6 @@ bool Application::HandleHotkeyEvent(const HotkeyEvent& event)
         {
         case HotkeyAction::double_click:
             platform_.DoubleClick();
-            break;
-
-        case HotkeyAction::toggle_console:
-            platform_.ToggleConsoleVisibility();
             break;
 
         case HotkeyAction::none:

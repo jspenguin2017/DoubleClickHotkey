@@ -82,7 +82,7 @@ LRESULT KeyboardHook::DispatchKeyboardEvent(const int code, const WPARAM message
     }
 
     const auto* keyboard_event = reinterpret_cast<PKBDLLHOOKSTRUCT>(data);
-    if (keyboard_event->vkCode != VK_F8)
+    if (keyboard_event->vkCode != VK_F13)
     {
         return CallNextHookEx(handle_, code, message, data);
     }

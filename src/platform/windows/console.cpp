@@ -7,11 +7,6 @@
 
 namespace double_click_hotkey::windows
 {
-bool Console::IsVisible() const noexcept
-{
-    return IsWindowVisible(GetConsoleWindow()) != 0;
-}
-
 void Console::Hide() noexcept
 {
     ShowWindow(GetConsoleWindow(), SW_HIDE);
@@ -22,23 +17,19 @@ void Console::Show() noexcept
     ShowWindow(GetConsoleWindow(), SW_SHOW);
 }
 
-void Console::ToggleVisibility() noexcept
+void Console::WriteLine(const std::string_view message)
 {
-    if (IsVisible())
-    {
-        Hide();
-    }
-    else
-    {
-        Show();
-    }
+    std::cout << message << std::endl;
 }
 
-void Console::ReportError(const std::string_view message)
+void Console::ReportError(const std::string_view message, const bool wait_for_key)
 {
     Show();
-    std::cout << message << std::endl;
-    WaitForKey();
+    WriteLine(message);
+    if (wait_for_key)
+    {
+        WaitForKey();
+    }
 }
 
 void Console::WaitForKey()

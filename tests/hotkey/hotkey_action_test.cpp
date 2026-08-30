@@ -9,41 +9,18 @@ TEST(HotkeyActionTest, DoubleClicksWithoutModifiers)
     EXPECT_EQ(GetHotkeyAction({}), HotkeyAction::double_click);
 }
 
-TEST(HotkeyActionTest, TogglesConsoleWithAltControlAndShift)
+TEST(HotkeyActionTest, DoubleClicksWithEveryModifierCombination)
 {
-    ModifierState modifiers;
-    modifiers.alt = true;
-    modifiers.control = true;
-    modifiers.shift = true;
+    for (unsigned int modifier_mask = 0; modifier_mask < 16; ++modifier_mask)
+    {
+        SCOPED_TRACE(modifier_mask);
+        ModifierState modifiers;
+        modifiers.alt = (modifier_mask & 1U) != 0;
+        modifiers.control = (modifier_mask & 2U) != 0;
+        modifiers.shift = (modifier_mask & 4U) != 0;
+        modifiers.system = (modifier_mask & 8U) != 0;
 
-    EXPECT_EQ(GetHotkeyAction(modifiers), HotkeyAction::toggle_console);
-}
-
-TEST(HotkeyActionTest, TogglesConsoleWhenTheSystemModifierIsAlsoPressed)
-{
-    ModifierState modifiers;
-    modifiers.alt = true;
-    modifiers.control = true;
-    modifiers.shift = true;
-    modifiers.system = true;
-
-    EXPECT_EQ(GetHotkeyAction(modifiers), HotkeyAction::toggle_console);
-}
-
-TEST(HotkeyActionTest, DoesNothingWithAnIncompleteModifierCombination)
-{
-    ModifierState modifiers;
-    modifiers.control = true;
-    modifiers.shift = true;
-
-    EXPECT_EQ(GetHotkeyAction(modifiers), HotkeyAction::none);
-}
-
-TEST(HotkeyActionTest, DoesNothingWithTheSystemModifier)
-{
-    ModifierState modifiers;
-    modifiers.system = true;
-
-    EXPECT_EQ(GetHotkeyAction(modifiers), HotkeyAction::none);
+        EXPECT_EQ(GetHotkeyAction(modifiers), HotkeyAction::double_click);
+    }
 }
 } // namespace double_click_hotkey

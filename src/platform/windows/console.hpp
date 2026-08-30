@@ -7,11 +7,10 @@ namespace double_click_hotkey::windows
 class Console
 {
   public:
-    [[nodiscard]] bool IsVisible() const noexcept;
     void Hide() noexcept;
     void Show() noexcept;
-    void ToggleVisibility() noexcept;
-    void ReportError(std::string_view message);
+    void WriteLine(std::string_view message);
+    void ReportError(std::string_view message, bool wait_for_key = true);
 
   private:
     static void WaitForKey();

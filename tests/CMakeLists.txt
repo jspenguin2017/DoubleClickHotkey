@@ -1,6 +1,7 @@
 add_executable(
     double_click_hotkey_tests
     application/application_test.cpp
+    application/launch_command_test.cpp
     hotkey/hotkey_action_test.cpp
 )
 target_compile_features(double_click_hotkey_tests PRIVATE cxx_std_17)

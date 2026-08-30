@@ -14,7 +14,6 @@ enum class HotkeyAction
 {
     none,
     double_click,
-    toggle_console,
 };
 
 [[nodiscard]] HotkeyAction GetHotkeyAction(const ModifierState& modifiers) noexcept;

@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.28)
 project(
     DoubleClickHotkey
     VERSION 1.0.0
-    DESCRIPTION "Turn F8 into a global Windows double-click hotkey"
+    DESCRIPTION "Turn F13 into a global Windows double-click hotkey"
     LANGUAGES CXX
 )
 
@@ -23,6 +23,7 @@ add_library(
     double_click_hotkey_core
     STATIC
         src/application/application.cpp
+        src/application/launch_command.cpp
         src/hotkey/hotkey_action.cpp
 )
 add_library(DoubleClickHotkey::core ALIAS double_click_hotkey_core)
@@ -43,7 +44,9 @@ if(DOUBLE_CLICK_HOTKEY_BUILD_APP)
             DOUBLE_CLICK_HOTKEY_PLATFORM_SOURCES
             src/platform/windows/console.cpp
             src/platform/windows/console_control_handler.cpp
+            src/platform/windows/instance_command.cpp
             src/platform/windows/keyboard_hook.cpp
+            src/platform/windows/keyboard_sender.cpp
             src/platform/windows/mouse.cpp
             src/platform/windows/platform_factory.cpp
             src/platform/windows/single_instance.cpp
@@ -84,17 +87,23 @@ set(
     DOUBLE_CLICK_HOTKEY_FORMAT_FILES
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/application.hpp"
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/hotkey_action.hpp"
+    "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/launch_command.hpp"
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/platform_binding.hpp"
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/platform_factory.hpp"
     "${PROJECT_SOURCE_DIR}/src/application/application.cpp"
+    "${PROJECT_SOURCE_DIR}/src/application/launch_command.cpp"
     "${PROJECT_SOURCE_DIR}/src/hotkey/hotkey_action.cpp"
     "${PROJECT_SOURCE_DIR}/src/main.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/console.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/console.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/console_control_handler.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/console_control_handler.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/instance_command.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/instance_command.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_hook.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_hook.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_sender.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_sender.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/mouse.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/mouse.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/platform_factory.cpp"
@@ -103,6 +112,7 @@ set(
     "${PROJECT_SOURCE_DIR}/src/platform/windows/windows_platform_binding.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/windows_platform_binding.hpp"
     "${PROJECT_SOURCE_DIR}/tests/application/application_test.cpp"
+    "${PROJECT_SOURCE_DIR}/tests/application/launch_command_test.cpp"
     "${PROJECT_SOURCE_DIR}/tests/hotkey/hotkey_action_test.cpp"
 )
 include(cmake/ClangFormat.cmake)
