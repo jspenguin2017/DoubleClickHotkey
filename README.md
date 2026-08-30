@@ -7,17 +7,24 @@ Double Click Hotkey is a small Windows 11 utility that turns <kbd>F13</kbd> into
 Run `DoubleClickHotkey.exe` and press <kbd>F13</kbd> to double-click. The application consumes F13 even when
 <kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd>, or either <kbd>Win</kbd> key is held.
 
-The service allows only one instance and hides its console at startup. These one-shot commands keep their own console
-visible:
+The service allows one instance per interactive Windows session, so users in different sessions can each run their own
+instance. It hides its console at startup unless `--start-shown` is used. The other commands are one-shot operations and
+keep their own console visible:
 
-| Command                            | Effect                                                                                        |
-| ---------------------------------- | --------------------------------------------------------------------------------------------- |
-| `DoubleClickHotkey.exe --show`     | Shows the running service's console, or reports that no instance is running.                  |
-| `DoubleClickHotkey.exe --hide`     | Hides the running service's console, or reports that no instance is running.                  |
-| `DoubleClickHotkey.exe --send-f13` | With no service running, waits five seconds and sends one F13 press for hotkey configuration. |
+| Command                               | Effect                                                                                        |
+| ------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `DoubleClickHotkey.exe --start-shown` | Starts the service with its console shown instead of hidden.                                  |
+| `DoubleClickHotkey.exe --show`        | Shows the running service's console, or reports that no ready instance is available.          |
+| `DoubleClickHotkey.exe --hide`        | Hides the running service's console, or reports that no ready instance is available.          |
+| `DoubleClickHotkey.exe --send-f13`    | With no service running, waits five seconds and sends one F13 press for hotkey configuration. |
 
 Injection errors are logged without revealing a hidden console; use `--show` to inspect them. There is no hotkey for
-changing console visibility.
+changing console visibility. A `--show` or `--hide` command issued while the service is still initializing may fail;
+retry it after startup, or use `--start-shown` when the console must be visible from the beginning.
+
+Showing and hiding the console are intentionally not treated as sensitive operations. Within the same interactive
+session, a non-elevated launch may show or hide a service that was started elevated. This permission does not grant the
+caller the ability to inject input through the elevated service.
 
 [Windows restricts synthesized input](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput)
 to applications at an equal or lower integrity level. Double Click Hotkey therefore cannot double-click or send F13 to

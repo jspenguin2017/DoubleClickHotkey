@@ -12,6 +12,11 @@ TEST(LaunchCommandTest, RunsNormallyWithoutArguments)
     EXPECT_EQ(ParseLaunchCommand({}), LaunchCommand::run);
 }
 
+TEST(LaunchCommandTest, ParsesStartShown)
+{
+    EXPECT_EQ(ParseLaunchCommand({"--start-shown"}), LaunchCommand::start_shown);
+}
+
 TEST(LaunchCommandTest, ParsesShow)
 {
     EXPECT_EQ(ParseLaunchCommand({"--show"}), LaunchCommand::show_window);

@@ -15,7 +15,7 @@ namespace double_click_hotkey::windows
 {
 namespace
 {
-constexpr wchar_t SingleInstanceName[] = L"double-click-hotkey-mutex-v2-dd74d3c1-ded5-4d6c-869c-f06eb80200ee";
+constexpr wchar_t SingleInstanceName[] = L"Local\\double-click-hotkey-mutex-v3-dd74d3c1-ded5-4d6c-869c-f06eb80200ee";
 } // namespace
 
 WindowsPlatformBinding::WindowsPlatformBinding(const KeyboardSender::SendInputFunction send_input) noexcept
@@ -34,14 +34,14 @@ PlatformResult WindowsPlatformBinding::RunService(HotkeyEventHandler hotkey_hand
     if (single_instance.Status() == SingleInstanceStatus::failed)
     {
         return {PlatformResultStatus::failure,
-                FormatError("Failed to create the single-instance mutex", single_instance.LastErrorCode())};
+                FormatError(single_instance.LastErrorMessage(), single_instance.LastErrorCode())};
     }
 
     InstanceCommandReceiver command_receiver;
     if (!command_receiver.Initialize())
     {
         return {PlatformResultStatus::failure,
-                FormatError("Failed to initialize the instance command receiver", command_receiver.LastErrorCode())};
+                FormatError(command_receiver.LastErrorMessage(), command_receiver.LastErrorCode())};
     }
 
     return RunMessageLoop(std::move(hotkey_handler), std::move(visibility_handler), command_receiver);
@@ -62,7 +62,7 @@ PlatformResult WindowsPlatformBinding::ReserveSingleInstance()
     if (reservation->Status() == SingleInstanceStatus::failed)
     {
         return {PlatformResultStatus::failure,
-                FormatError("Failed to create the single-instance mutex", reservation->LastErrorCode())};
+                FormatError(reservation->LastErrorMessage(), reservation->LastErrorCode())};
     }
 
     single_instance_reservation_ = std::move(reservation);
@@ -71,16 +71,32 @@ PlatformResult WindowsPlatformBinding::ReserveSingleInstance()
 
 PlatformResult WindowsPlatformBinding::SendWindowCommand(const WindowVisibility visibility)
 {
-    DWORD error_code = ERROR_SUCCESS;
-    if (!SendInstanceCommand(ToInstanceCommand(visibility), error_code))
+    DWORD probe_error_code = ERROR_SUCCESS;
+    const SingleInstanceProbeStatus probe_status = ProbeSingleInstance(SingleInstanceName, probe_error_code);
+    if (probe_status == SingleInstanceProbeStatus::not_running)
     {
-        if (error_code == ERROR_FILE_NOT_FOUND)
+        return {PlatformResultStatus::not_running, {}};
+    }
+    if (probe_status == SingleInstanceProbeStatus::failed)
+    {
+        return {PlatformResultStatus::failure,
+                FormatError("Failed to open the session-local single-instance mutex while checking for a running "
+                            "instance",
+                            probe_error_code)};
+    }
+
+    InstanceCommandError error;
+    if (!SendInstanceCommand(ToInstanceCommand(visibility), error))
+    {
+        if (error.code == ERROR_FILE_NOT_FOUND)
         {
-            return {PlatformResultStatus::not_running, {}};
+            std::string message(error.message);
+            message += "; the instance's command channel may not be ready because it is still initializing or has "
+                       "exited";
+            return {PlatformResultStatus::failure, FormatError(message.c_str(), error.code)};
         }
 
-        return {PlatformResultStatus::failure,
-                FormatError("Failed to send the command to the running instance", error_code)};
+        return {PlatformResultStatus::failure, FormatError(error.message, error.code)};
     }
 
     return {};

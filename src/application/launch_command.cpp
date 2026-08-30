@@ -14,6 +14,10 @@ LaunchCommand ParseLaunchCommand(const std::vector<std::string_view>& arguments)
     }
 
     const std::string_view argument = arguments.front();
+    if (argument == "--start-shown")
+    {
+        return LaunchCommand::start_shown;
+    }
     if (argument == "--show")
     {
         return LaunchCommand::show_window;

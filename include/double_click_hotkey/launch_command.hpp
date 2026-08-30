@@ -8,6 +8,7 @@ namespace double_click_hotkey
 enum class LaunchCommand
 {
     run,
+    start_shown,
     show_window,
     hide_window,
     send_f13,

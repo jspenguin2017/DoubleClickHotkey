@@ -6,9 +6,11 @@ namespace double_click_hotkey
 {
 namespace
 {
-constexpr char UsageMessage[] = "Usage: DoubleClickHotkey [--show | --hide | --send-f13]";
-constexpr char AlreadyRunningMessage[] = "Another instance of this application is already running.";
-constexpr char NoRunningInstanceMessage[] = "No running instance of this application was found.";
+constexpr char UsageMessage[] = "Usage: DoubleClickHotkey [--start-shown | --show | --hide | --send-f13]";
+constexpr char AlreadyRunningMessage[] =
+    "Another instance of this application is already running in this interactive session.";
+constexpr char NoReadyInstanceMessage[] =
+    "No running instance in this interactive session is ready to receive commands.";
 constexpr auto SendF13Delay = std::chrono::seconds(5);
 } // namespace
 
@@ -22,7 +24,10 @@ int Application::Run()
     switch (launch_command_)
     {
     case LaunchCommand::run:
-        return RunService();
+        return RunService(WindowVisibility::hidden);
+
+    case LaunchCommand::start_shown:
+        return RunService(WindowVisibility::shown);
 
     case LaunchCommand::show_window:
         return SendWindowCommand(WindowVisibility::shown);
@@ -42,9 +47,9 @@ int Application::Run()
     return 1;
 }
 
-int Application::RunService()
+int Application::RunService(const WindowVisibility initial_visibility)
 {
-    platform_.SetWindowVisibility(WindowVisibility::hidden);
+    platform_.SetWindowVisibility(initial_visibility);
 
     const PlatformResult result =
         platform_.RunService([this](const HotkeyEvent& event) { HandleHotkeyEvent(event); },
@@ -72,7 +77,7 @@ int Application::SendWindowCommand(const WindowVisibility visibility)
     }
     if (result.status == PlatformResultStatus::not_running)
     {
-        ReportError(NoRunningInstanceMessage, false);
+        ReportError(NoReadyInstanceMessage, false);
         return 1;
     }
 
@@ -85,7 +90,10 @@ int Application::SendF13AfterDelay()
     const PlatformResult reservation = platform_.ReserveSingleInstance();
     if (reservation.status == PlatformResultStatus::already_running)
     {
-        ReportError("Another instance of this application is already running. Close it before sending F13.", false);
+        ReportError(
+            "Another instance of this application is already running in this interactive session. Close it before "
+            "sending F13.",
+            false);
         return 1;
     }
     if (reservation.status != PlatformResultStatus::success)

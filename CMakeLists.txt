@@ -52,7 +52,7 @@ if(DOUBLE_CLICK_HOTKEY_BUILD_APP)
             src/platform/windows/single_instance.cpp
             src/platform/windows/windows_platform_binding.cpp
         )
-        set(DOUBLE_CLICK_HOTKEY_PLATFORM_LIBRARIES user32)
+        set(DOUBLE_CLICK_HOTKEY_PLATFORM_LIBRARIES advapi32 user32)
     else()
         message(FATAL_ERROR "No application platform binding is available for ${CMAKE_SYSTEM_NAME}")
     endif()
@@ -106,6 +106,7 @@ set(
     "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_sender.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/mouse.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/mouse.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/named_object_security.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/platform_factory.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/single_instance.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/single_instance.hpp"

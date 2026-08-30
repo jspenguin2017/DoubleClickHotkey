@@ -150,6 +150,16 @@ TEST_F(MainTest, PassesALaunchArgumentToTheApplication)
     EXPECT_EQ(platform_state.written_lines.size(), 0U);
 }
 
+TEST_F(MainTest, StartsTheApplicationWithItsWindowShown)
+{
+    EXPECT_EQ(RunMain({"--start-shown"}), 0);
+    EXPECT_EQ(platform_factory_call_count, 1);
+    EXPECT_EQ(platform_state.run_service_count, 1);
+    EXPECT_EQ(platform_state.sent_window_commands.size(), 0U);
+    EXPECT_EQ(platform_state.window_visibility_changes, (std::vector<WindowVisibility>{WindowVisibility::shown}));
+    EXPECT_EQ(platform_state.written_lines.size(), 0U);
+}
+
 TEST_F(MainTest, PassesEveryLaunchArgumentToTheParser)
 {
     EXPECT_EQ(RunMain({"--show", "--hide"}), 1);
@@ -158,7 +168,7 @@ TEST_F(MainTest, PassesEveryLaunchArgumentToTheParser)
     EXPECT_EQ(platform_state.sent_window_commands.size(), 0U);
     EXPECT_EQ(platform_state.window_visibility_changes, (std::vector<WindowVisibility>{WindowVisibility::shown}));
     EXPECT_EQ(platform_state.written_lines,
-              (std::vector<std::string>{"Usage: DoubleClickHotkey [--show | --hide | --send-f13]"}));
+              (std::vector<std::string>{"Usage: DoubleClickHotkey [--start-shown | --show | --hide | --send-f13]"}));
     EXPECT_EQ(platform_state.wait_for_key_count, 0);
 }
 

@@ -13,7 +13,7 @@ class Application
     [[nodiscard]] int Run();
 
   private:
-    [[nodiscard]] int RunService();
+    [[nodiscard]] int RunService(WindowVisibility initial_visibility);
     [[nodiscard]] int SendWindowCommand(WindowVisibility visibility);
     [[nodiscard]] int SendF13AfterDelay();
     void HandleHotkeyEvent(const HotkeyEvent& event);

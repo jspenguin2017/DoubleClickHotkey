@@ -129,6 +129,18 @@ TEST(ApplicationTest, RunsTheServiceAndHidesItsWindow)
     EXPECT_EQ(platform.wait_for_key_count, 0);
 }
 
+TEST(ApplicationTest, RunsTheServiceWithItsWindowShownWhenRequested)
+{
+    FakePlatformBinding platform;
+    Application application(platform, LaunchCommand::start_shown);
+
+    EXPECT_EQ(application.Run(), 0);
+    EXPECT_EQ(platform.run_service_count, 1);
+    EXPECT_EQ(platform.window_visibility_changes, (std::vector<WindowVisibility>{WindowVisibility::shown}));
+    EXPECT_EQ(platform.written_lines.size(), 0U);
+    EXPECT_EQ(platform.wait_for_key_count, 0);
+}
+
 TEST(ApplicationTest, ReportsWhenTheServiceIsAlreadyRunning)
 {
     FakePlatformBinding platform;
@@ -137,7 +149,8 @@ TEST(ApplicationTest, ReportsWhenTheServiceIsAlreadyRunning)
 
     EXPECT_EQ(application.Run(), 1);
     EXPECT_EQ(platform.run_service_count, 1);
-    ExpectErrorReported(platform, {"Another instance of this application is already running."},
+    ExpectErrorReported(platform,
+                        {"Another instance of this application is already running in this interactive session."},
                         {WindowVisibility::hidden, WindowVisibility::shown}, true);
 }
 
@@ -190,8 +203,8 @@ TEST(ApplicationTest, ReportsWhenAWindowCommandHasNoRunningReceiver)
 
     EXPECT_EQ(application.Run(), 1);
     EXPECT_EQ(platform.sent_window_commands, (std::vector<WindowVisibility>{WindowVisibility::shown}));
-    ExpectErrorReported(platform, {"No running instance of this application was found."}, {WindowVisibility::shown},
-                        false);
+    ExpectErrorReported(platform, {"No running instance in this interactive session is ready to receive commands."},
+                        {WindowVisibility::shown}, false);
 }
 
 TEST(ApplicationTest, ReportsAWindowCommandFailure)
@@ -230,7 +243,8 @@ TEST(ApplicationTest, DoesNotSendF13WhileTheServiceIsRunning)
     EXPECT_EQ(platform.waits.size(), 0U);
     EXPECT_EQ(platform.send_f13_count, 0);
     ExpectErrorReported(platform,
-                        {"Another instance of this application is already running. Close it before sending F13."},
+                        {"Another instance of this application is already running in this interactive session. Close "
+                         "it before sending F13."},
                         {WindowVisibility::shown}, false);
     EXPECT_EQ(platform.operations, (std::vector<std::string>{"reserve instance", "write line"}));
 }
@@ -274,7 +288,7 @@ TEST(ApplicationTest, ReportsUsageForAnInvalidLaunchCommand)
     EXPECT_EQ(platform.run_service_count, 0);
     EXPECT_EQ(platform.sent_window_commands.size(), 0U);
     EXPECT_EQ(platform.reserve_single_instance_count, 0);
-    ExpectErrorReported(platform, {"Usage: DoubleClickHotkey [--show | --hide | --send-f13]"},
+    ExpectErrorReported(platform, {"Usage: DoubleClickHotkey [--start-shown | --show | --hide | --send-f13]"},
                         {WindowVisibility::shown}, false);
 }
 
@@ -287,7 +301,7 @@ TEST(ApplicationTest, ReportsUsageForAnUnrecognizedLaunchCommand)
     EXPECT_EQ(platform.run_service_count, 0);
     EXPECT_EQ(platform.sent_window_commands.size(), 0U);
     EXPECT_EQ(platform.reserve_single_instance_count, 0);
-    ExpectErrorReported(platform, {"Usage: DoubleClickHotkey [--show | --hide | --send-f13]"},
+    ExpectErrorReported(platform, {"Usage: DoubleClickHotkey [--start-shown | --show | --hide | --send-f13]"},
                         {WindowVisibility::shown}, false);
 }
 
