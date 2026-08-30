@@ -18,6 +18,7 @@ class FakePlatformBinding final : public PlatformBinding
   public:
     PlatformResult RunService(HotkeyEventHandler hotkey_handler, WindowVisibilityHandler visibility_handler) override
     {
+        operations.emplace_back("run service");
         ++run_service_count;
         for (const HotkeyEvent& event : hotkey_events)
         {
@@ -39,12 +40,14 @@ class FakePlatformBinding final : public PlatformBinding
 
     PlatformResult SendWindowCommand(const WindowVisibility visibility) override
     {
+        operations.emplace_back("send window command");
         sent_window_commands.push_back(visibility);
         return send_window_command_result;
     }
 
     void SetWindowVisibility(const WindowVisibility visibility) override
     {
+        operations.emplace_back("set window visibility");
         window_visibility_changes.push_back(visibility);
     }
 
@@ -75,6 +78,7 @@ class FakePlatformBinding final : public PlatformBinding
 
     PlatformResult DoubleClick() override
     {
+        operations.emplace_back("double click");
         ++double_click_count;
         return double_click_result;
     }
@@ -101,7 +105,7 @@ class FakePlatformBinding final : public PlatformBinding
 void ExpectErrorReported(const FakePlatformBinding& platform,
                          const std::initializer_list<std::string_view> expected_lines,
                          const std::initializer_list<WindowVisibility> expected_visibility_changes,
-                         const bool waited_for_key)
+                         const std::initializer_list<std::string_view> expected_operations, const bool waited_for_key)
 {
     std::vector<std::string> lines;
     lines.reserve(expected_lines.size());
@@ -112,8 +116,16 @@ void ExpectErrorReported(const FakePlatformBinding& platform,
 
     const std::vector<WindowVisibility> visibility_changes(expected_visibility_changes);
 
+    std::vector<std::string> operations;
+    operations.reserve(expected_operations.size());
+    for (const std::string_view operation : expected_operations)
+    {
+        operations.emplace_back(operation);
+    }
+
     EXPECT_EQ(platform.written_lines, lines);
     EXPECT_EQ(platform.window_visibility_changes, visibility_changes);
+    EXPECT_EQ(platform.operations, operations);
     EXPECT_EQ(platform.wait_for_key_count, waited_for_key ? 1 : 0);
 }
 
@@ -127,6 +139,7 @@ TEST(ApplicationTest, RunsTheServiceAndHidesItsWindow)
     EXPECT_EQ(platform.window_visibility_changes, (std::vector<WindowVisibility>{WindowVisibility::hidden}));
     EXPECT_EQ(platform.written_lines.size(), 0U);
     EXPECT_EQ(platform.wait_for_key_count, 0);
+    EXPECT_EQ(platform.operations, (std::vector<std::string>{"set window visibility", "run service"}));
 }
 
 TEST(ApplicationTest, RunsTheServiceWithItsWindowShownWhenRequested)
@@ -139,6 +152,7 @@ TEST(ApplicationTest, RunsTheServiceWithItsWindowShownWhenRequested)
     EXPECT_EQ(platform.window_visibility_changes, (std::vector<WindowVisibility>{WindowVisibility::shown}));
     EXPECT_EQ(platform.written_lines.size(), 0U);
     EXPECT_EQ(platform.wait_for_key_count, 0);
+    EXPECT_EQ(platform.operations, (std::vector<std::string>{"set window visibility", "run service"}));
 }
 
 TEST(ApplicationTest, ReportsWhenTheServiceIsAlreadyRunning)
@@ -149,9 +163,10 @@ TEST(ApplicationTest, ReportsWhenTheServiceIsAlreadyRunning)
 
     EXPECT_EQ(application.Run(), 1);
     EXPECT_EQ(platform.run_service_count, 1);
-    ExpectErrorReported(platform,
-                        {"Another instance of this application is already running in this interactive session."},
-                        {WindowVisibility::hidden, WindowVisibility::shown}, true);
+    ExpectErrorReported(
+        platform, {"Another instance of this application is already running in this interactive session."},
+        {WindowVisibility::hidden, WindowVisibility::shown},
+        {"set window visibility", "run service", "set window visibility", "write line", "wait for key"}, true);
 }
 
 TEST(ApplicationTest, ReportsAServiceFailure)
@@ -162,7 +177,9 @@ TEST(ApplicationTest, ReportsAServiceFailure)
 
     EXPECT_EQ(application.Run(), 1);
     EXPECT_EQ(platform.run_service_count, 1);
-    ExpectErrorReported(platform, {"service failed"}, {WindowVisibility::hidden, WindowVisibility::shown}, true);
+    ExpectErrorReported(platform, {"service failed"}, {WindowVisibility::hidden, WindowVisibility::shown},
+                        {"set window visibility", "run service", "set window visibility", "write line", "wait for key"},
+                        true);
 }
 
 TEST(ApplicationTest, AppliesWindowCommandsReceivedByTheService)
@@ -175,6 +192,8 @@ TEST(ApplicationTest, AppliesWindowCommandsReceivedByTheService)
     EXPECT_EQ(
         platform.window_visibility_changes,
         (std::vector<WindowVisibility>{WindowVisibility::hidden, WindowVisibility::shown, WindowVisibility::hidden}));
+    EXPECT_EQ(platform.operations, (std::vector<std::string>{"set window visibility", "run service",
+                                                             "set window visibility", "set window visibility"}));
 }
 
 TEST(ApplicationTest, SendsTheRequestedWindowCommand)
@@ -192,6 +211,7 @@ TEST(ApplicationTest, SendsTheRequestedWindowCommand)
         EXPECT_EQ(platform.run_service_count, 0);
         EXPECT_EQ(platform.window_visibility_changes.size(), 0U);
         EXPECT_EQ(platform.written_lines.size(), 0U);
+        EXPECT_EQ(platform.operations, (std::vector<std::string>{"send window command"}));
     }
 }
 
@@ -204,7 +224,8 @@ TEST(ApplicationTest, ReportsWhenAWindowCommandHasNoRunningReceiver)
     EXPECT_EQ(application.Run(), 1);
     EXPECT_EQ(platform.sent_window_commands, (std::vector<WindowVisibility>{WindowVisibility::shown}));
     ExpectErrorReported(platform, {"No running instance in this interactive session is ready to receive commands."},
-                        {WindowVisibility::shown}, false);
+                        {WindowVisibility::shown}, {"send window command", "set window visibility", "write line"},
+                        false);
 }
 
 TEST(ApplicationTest, ReportsAWindowCommandFailure)
@@ -215,7 +236,8 @@ TEST(ApplicationTest, ReportsAWindowCommandFailure)
 
     EXPECT_EQ(application.Run(), 1);
     EXPECT_EQ(platform.sent_window_commands, (std::vector<WindowVisibility>{WindowVisibility::hidden}));
-    ExpectErrorReported(platform, {"command failed"}, {WindowVisibility::shown}, false);
+    ExpectErrorReported(platform, {"command failed"}, {WindowVisibility::shown},
+                        {"send window command", "set window visibility", "write line"}, false);
 }
 
 TEST(ApplicationTest, ReservesTheInstanceAndSendsF13AfterFiveSeconds)
@@ -245,8 +267,7 @@ TEST(ApplicationTest, DoesNotSendF13WhileTheServiceIsRunning)
     ExpectErrorReported(platform,
                         {"Another instance of this application is already running in this interactive session. Close "
                          "it before sending F13."},
-                        {WindowVisibility::shown}, false);
-    EXPECT_EQ(platform.operations, (std::vector<std::string>{"reserve instance", "write line"}));
+                        {WindowVisibility::shown}, {"reserve instance", "set window visibility", "write line"}, false);
 }
 
 TEST(ApplicationTest, ReportsAnInstanceReservationFailureWithoutSendingF13)
@@ -259,8 +280,8 @@ TEST(ApplicationTest, ReportsAnInstanceReservationFailureWithoutSendingF13)
     EXPECT_EQ(platform.reserve_single_instance_count, 1);
     EXPECT_EQ(platform.waits.size(), 0U);
     EXPECT_EQ(platform.send_f13_count, 0);
-    ExpectErrorReported(platform, {"reservation failed"}, {WindowVisibility::shown}, false);
-    EXPECT_EQ(platform.operations, (std::vector<std::string>{"reserve instance", "write line"}));
+    ExpectErrorReported(platform, {"reservation failed"}, {WindowVisibility::shown},
+                        {"reserve instance", "set window visibility", "write line"}, false);
 }
 
 TEST(ApplicationTest, ReportsAnF13InjectionFailure)
@@ -274,9 +295,9 @@ TEST(ApplicationTest, ReportsAnF13InjectionFailure)
     EXPECT_EQ(platform.waits, (std::vector<std::chrono::milliseconds>{std::chrono::seconds(5)}));
     EXPECT_EQ(platform.send_f13_count, 1);
     ExpectErrorReported(platform, {"F13 will be sent in 5 seconds. Focus the target application now.", "F13 failed"},
-                        {WindowVisibility::shown}, false);
-    EXPECT_EQ(platform.operations,
-              (std::vector<std::string>{"reserve instance", "write line", "wait", "send F13", "write line"}));
+                        {WindowVisibility::shown},
+                        {"reserve instance", "write line", "wait", "send F13", "set window visibility", "write line"},
+                        false);
 }
 
 TEST(ApplicationTest, ReportsUsageForAnInvalidLaunchCommand)
@@ -289,7 +310,7 @@ TEST(ApplicationTest, ReportsUsageForAnInvalidLaunchCommand)
     EXPECT_EQ(platform.sent_window_commands.size(), 0U);
     EXPECT_EQ(platform.reserve_single_instance_count, 0);
     ExpectErrorReported(platform, {"Usage: DoubleClickHotkey [--start-shown | --show | --hide | --send-f13]"},
-                        {WindowVisibility::shown}, false);
+                        {WindowVisibility::shown}, {"set window visibility", "write line"}, false);
 }
 
 TEST(ApplicationTest, ReportsUsageForAnUnrecognizedLaunchCommand)
@@ -302,7 +323,7 @@ TEST(ApplicationTest, ReportsUsageForAnUnrecognizedLaunchCommand)
     EXPECT_EQ(platform.sent_window_commands.size(), 0U);
     EXPECT_EQ(platform.reserve_single_instance_count, 0);
     ExpectErrorReported(platform, {"Usage: DoubleClickHotkey [--start-shown | --show | --hide | --send-f13]"},
-                        {WindowVisibility::shown}, false);
+                        {WindowVisibility::shown}, {"set window visibility", "write line"}, false);
 }
 
 TEST(ApplicationTest, DoubleClicksForAKeyPress)
@@ -315,6 +336,7 @@ TEST(ApplicationTest, DoubleClicksForAKeyPress)
 
     EXPECT_EQ(platform.double_click_count, 1);
     EXPECT_EQ(platform.written_lines.size(), 0U);
+    EXPECT_EQ(platform.operations, (std::vector<std::string>{"set window visibility", "run service", "double click"}));
 }
 
 TEST(ApplicationTest, DoubleClicksOnlyOncePerPhysicalPress)
@@ -329,6 +351,8 @@ TEST(ApplicationTest, DoubleClicksOnlyOncePerPhysicalPress)
     EXPECT_EQ(application.Run(), 0);
 
     EXPECT_EQ(platform.double_click_count, 2);
+    EXPECT_EQ(platform.operations,
+              (std::vector<std::string>{"set window visibility", "run service", "double click", "double click"}));
 }
 
 TEST(ApplicationTest, DoesNotDoubleClickForAHotkeyRelease)
@@ -340,6 +364,7 @@ TEST(ApplicationTest, DoesNotDoubleClickForAHotkeyRelease)
     EXPECT_EQ(application.Run(), 0);
 
     EXPECT_EQ(platform.double_click_count, 0);
+    EXPECT_EQ(platform.operations, (std::vector<std::string>{"set window visibility", "run service"}));
 }
 
 TEST(ApplicationTest, LogsADoubleClickInjectionFailureWithoutShowingTheWindow)
@@ -355,6 +380,8 @@ TEST(ApplicationTest, LogsADoubleClickInjectionFailureWithoutShowingTheWindow)
     EXPECT_EQ(platform.written_lines, (std::vector<std::string>{"double-click failed"}));
     EXPECT_EQ(platform.window_visibility_changes, (std::vector<WindowVisibility>{WindowVisibility::hidden}));
     EXPECT_EQ(platform.wait_for_key_count, 0);
+    EXPECT_EQ(platform.operations,
+              (std::vector<std::string>{"set window visibility", "run service", "double click", "write line"}));
 }
 } // namespace
 } // namespace double_click_hotkey
