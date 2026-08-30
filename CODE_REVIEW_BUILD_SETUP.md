@@ -2,53 +2,36 @@
 
 ## Reviewed scope and basis
 
-- Scope: `DoubleClickHotkey.sln`, `DoubleClickHotkey.vcxproj`, `DoubleClickHotkey.vcxproj.filters`, `README.md`,
-  `.gitattributes`, `.gitignore`, and `LICENSE`.
-- Revision: `42802b6` (`main`), with a clean worktree confirmed before the review began.
-- Review method: cross-checking the solution/project configuration matrix, compiler and linker settings, source-file
-  membership, setup guidance, repository exclusions, and dependency/test infrastructure.
-- Toolchain metadata was checked against Microsoft's documentation for the
-  [solution-file header](https://learn.microsoft.com/en-us/visualstudio/extensibility/internals/solution-dot-sln-file?view=visualstudio)
-  and [MSVC Build Tools](https://learn.microsoft.com/en-us/cpp/overview/what-s-new-for-msvc?view=msvc-150).
+- Scope: `CMakeLists.txt`, `CMakePresets.json`, `cmake/`, `tests/CMakeLists.txt`, `scripts/cmake.mjs`, `README.md`,
+  `package.json`, `package-lock.json`, `.clang-format`, `.prettierignore`, `.prettierrc.json`, `.gitignore`, and
+  `LICENSE`.
+- Revision: `985365d` (`main`), with a clean worktree confirmed before the review update began.
+- Review method: revalidating the previous build/setup review against the CMake target graph, preset matrix, compiler
+  and linker settings, source-file membership, dependency and test configuration, formatting tools, setup guidance, and
+  repository exclusions introduced by the restructure.
 
 ## Findings
 
-### BUILD-1: The solution identifies Visual Studio 2019 while every build requires Visual Studio 2026's toolset
-
-- Severity: **Low**
-- Location: `DoubleClickHotkey.sln:3-5`, `DoubleClickHotkey.vcxproj:22`, `DoubleClickHotkey.vcxproj:32-51`,
-  `README.md:21-22`
-- Problem: The solution header and `VCProjectVersion` still identify major version 16 / Visual Studio 2019, while all
-  four project configurations require platform toolset `v145`. Microsoft documents `v145` as the Visual Studio 2026
-  toolset, which agrees with the README but not with the persisted solution/project version metadata.
-- Impact: The solution icon and any developer or tooling that relies on the persisted authoring version are given stale
-  information. A contributor following the version-16 metadata can open the project in an installation that cannot
-  supply `v145`, producing a missing-toolset build failure even though the repository's actual prerequisite is Visual
-  Studio 2026.
-- Recommendation: Resave or update the solution and project metadata with Visual Studio 2026 so they consistently
-  identify major version 18, and add concise build prerequisites covering the C++ desktop workload, `v145`, and the
-  required Windows SDK.
+No build/setup finding from the previous review remains applicable. The legacy Visual Studio solution and project files
+were removed, so their conflicting Visual Studio authoring and platform-toolset versions no longer exist. The supported
+build paths are now defined by CMake and the MinGW-w64 presets documented in `README.md`.
 
 ## Unresolved questions
 
-- Which exact Windows 10 SDK version is used for release artifacts? `WindowsTargetPlatformVersion` is set to the
-  floating value `10.0`, so different installed SDKs can be selected on different build machines.
-- What effective `RuntimeLibrary` setting is used for release artifacts? The project does not pin it. If the imported
-  Visual Studio defaults select `/MD`, the README's copy-only deployment also depends on an appropriate Visual C++
-  Redistributable being installed; verify the produced binary's imports and document or package that prerequisite.
-- Are the Releases-page binaries produced, signed, and verified through a separate process? No release workflow or
+- Are Releases-page binaries produced, signed, and verified through a separate process? No CI, release workflow, or
   artifact-provenance configuration is present in this repository, and external release artifacts were outside this
   review's local scope.
 
 ## Checks and areas not covered
 
-- `xmllint --noout DoubleClickHotkey.vcxproj DoubleClickHotkey.vcxproj.filters` passed.
-- The Debug/Release and x86/x64 solution mappings agree with the Win32/x64 project configurations, and the source
-  membership agrees between the project and filters files.
-- No third-party dependency manifest, vendored dependency, generated source, CI configuration, test project, or
-  test-runner configuration is tracked.
-- No additional findings were identified in the configuration matrix, filters, repository attributes/ignores, license,
-  or remaining README setup guidance. This does not imply those files are defect-free.
-- The project was not built because no Windows compiler or MSBuild installation is available in this Linux workspace. No
-  dependencies or toolchains were installed.
-- No reviewed source, configuration, documentation, or test file was modified.
+- `cmake --preset linux-native-debug`, `cmake --build --preset linux-native-debug`, and
+  `ctest --preset linux-native-debug` passed; all 10 discovered tests passed.
+- `cmake --preset linux-mingw-debug` and `cmake --build --preset linux-mingw-debug` passed, as did the corresponding
+  `linux-mingw-release` commands.
+- The CMake target source lists agree with the restructured tree. GoogleTest is pinned to an upstream revision and
+  archive checksum, and the application-controller and hotkey-policy tests are tracked under `tests/`.
+- The release executable is a 64-bit Windows console binary. Its import table contains only `KERNEL32.dll`,
+  `msvcrt.dll`, and `USER32.dll`; it does not depend on companion MinGW-w64 runtime DLLs.
+- The Windows executable and cross-compiled tests were not run because no Windows desktop or separately configured
+  compatibility environment is available in this Linux workspace.
+- No application source, build configuration, or test file was modified as part of this review update.
