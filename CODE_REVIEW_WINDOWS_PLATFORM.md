@@ -11,31 +11,16 @@
 
 ## Findings
 
-### W-3: Partial input injection can leave a key or mouse button pressed
-
-- Severity: **Medium**
-- References: `src/platform/windows/keyboard_sender.cpp:17-23` and `src/platform/windows/mouse.cpp:22-28`.
-- Problem: Both senders correctly detect when `SendInput` inserts fewer records than requested, but they return
-  immediately without compensating for the successfully inserted prefix. `SendInput` returns the number of records it
-  inserted, not an all-or-nothing result. If only the F13-down record or an odd-numbered prefix of the mouse sequence is
-  inserted, the matching key-up or left-button-up record is absent. See Microsoft's
-  [`SendInput` return-value contract](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput).
-- Impact: A partial failure can leave F13 or the primary mouse button logically held, causing unintended shortcuts,
-  selection, or dragging until another release transition happens to repair the state.
-- Recommendation: Use the returned count to determine whether the inserted prefix ends in a down transition. If it does,
-  immediately attempt a minimal compensating key-up or button-up injection and report both the original short write and
-  any recovery failure. Structure each operation so release cleanup is attempted on every failure path.
-
 ### W-4: UIPI-blocked input can be reported as error code zero
 
 - Severity: **Low**
-- References: `src/platform/windows/keyboard_sender.cpp:17-23`, `src/platform/windows/mouse.cpp:22-28`, and
-  `src/platform/windows/windows_platform_binding.cpp:117-141`.
-- Problem: The senders clear the thread's last-error value before calling `SendInput`, then propagate `GetLastError()`
-  whenever the inserted count is short. Windows explicitly states that neither the return value nor `GetLastError`
-  identifies a failure caused by User Interface Privilege Isolation (UIPI). Consequently, an attempt to target an
-  elevated application can leave the cleared value unchanged and be logged only as `error code: 0`, which reads like
-  success rather than a useful failure. See the
+- References: `src/platform/windows/input_injector.cpp:13-29` and
+  `src/platform/windows/windows_platform_binding.cpp:111-150`.
+- Problem: The input injector clears the thread's last-error value before calling `SendInput`, then propagates
+  `GetLastError()` whenever the inserted count is short. Windows explicitly states that neither the return value nor
+  `GetLastError` identifies a failure caused by User Interface Privilege Isolation (UIPI). Consequently, an attempt to
+  target an elevated application can leave the cleared value unchanged and be logged only as `error code: 0`, which
+  reads like success rather than a useful failure. See the
   [Microsoft `SendInput` UIPI documentation](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput).
 - Impact: Users cannot diagnose why the utility fails against a higher-integrity target and receive no actionable hint
   about the application's integrity-level limitation.

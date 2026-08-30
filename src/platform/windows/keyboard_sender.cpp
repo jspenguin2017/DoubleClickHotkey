@@ -4,6 +4,10 @@
 
 namespace double_click_hotkey::windows
 {
+KeyboardSender::KeyboardSender(const SendInputFunction send_input) noexcept : input_injector_(send_input)
+{
+}
+
 bool KeyboardSender::SendF13() noexcept
 {
     std::array<INPUT, 2> inputs{};
@@ -14,21 +18,16 @@ bool KeyboardSender::SendF13() noexcept
     }
     inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
 
-    const UINT input_count = static_cast<UINT>(inputs.size());
-    SetLastError(ERROR_SUCCESS);
-    const UINT sent_input_count = SendInput(input_count, inputs.data(), sizeof(INPUT));
-    if (sent_input_count != input_count)
-    {
-        last_error_code_ = GetLastError();
-        return false;
-    }
-
-    last_error_code_ = ERROR_SUCCESS;
-    return true;
+    return input_injector_.SendBalancedSequence(inputs.data(), static_cast<UINT>(inputs.size()));
 }
 
 DWORD KeyboardSender::LastErrorCode() const noexcept
 {
-    return last_error_code_;
+    return input_injector_.LastErrorCode();
+}
+
+std::optional<DWORD> KeyboardSender::LastReleaseErrorCode() const noexcept
+{
+    return input_injector_.LastReleaseErrorCode();
 }
 } // namespace double_click_hotkey::windows

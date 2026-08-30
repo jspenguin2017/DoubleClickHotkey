@@ -6,6 +6,10 @@
 
 namespace double_click_hotkey::windows
 {
+Mouse::Mouse(const SendInputFunction send_input) noexcept : input_injector_(send_input)
+{
+}
+
 bool Mouse::DoubleClick() noexcept
 {
     std::array<INPUT, 4> inputs{};
@@ -19,21 +23,16 @@ bool Mouse::DoubleClick() noexcept
     inputs[2].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
     inputs[3].mi.dwFlags = MOUSEEVENTF_LEFTUP;
 
-    const UINT input_count = static_cast<UINT>(inputs.size());
-    SetLastError(ERROR_SUCCESS);
-    const UINT sent_input_count = SendInput(input_count, inputs.data(), sizeof(INPUT));
-    if (sent_input_count != input_count)
-    {
-        last_error_code_ = GetLastError();
-        return false;
-    }
-
-    last_error_code_ = ERROR_SUCCESS;
-    return true;
+    return input_injector_.SendBalancedSequence(inputs.data(), static_cast<UINT>(inputs.size()));
 }
 
 DWORD Mouse::LastErrorCode() const noexcept
 {
-    return last_error_code_;
+    return input_injector_.LastErrorCode();
+}
+
+std::optional<DWORD> Mouse::LastReleaseErrorCode() const noexcept
+{
+    return input_injector_.LastReleaseErrorCode();
 }
 } // namespace double_click_hotkey::windows

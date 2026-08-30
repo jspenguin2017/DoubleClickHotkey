@@ -21,7 +21,11 @@ include(GoogleTest)
 gtest_discover_tests(double_click_hotkey_tests DISCOVERY_MODE PRE_TEST)
 
 if(TARGET double_click_hotkey_platform)
-    add_executable(double_click_hotkey_windows_platform_tests platform/windows/instance_command.test.cpp)
+    add_executable(
+        double_click_hotkey_windows_platform_tests
+        platform/windows/input_senders.test.cpp
+        platform/windows/instance_command.test.cpp
+    )
     target_compile_features(double_click_hotkey_windows_platform_tests PRIVATE cxx_std_17)
     target_compile_definitions(
         double_click_hotkey_windows_platform_tests

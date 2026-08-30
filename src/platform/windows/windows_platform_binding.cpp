@@ -112,7 +112,14 @@ PlatformResult WindowsPlatformBinding::SendF13()
 {
     if (!keyboard_sender_.SendF13())
     {
-        return {PlatformResultStatus::failure, FormatError("Failed to send F13", keyboard_sender_.LastErrorCode())};
+        std::string message = FormatError("Failed to send F13", keyboard_sender_.LastErrorCode());
+        const std::optional<DWORD> release_error_code = keyboard_sender_.LastReleaseErrorCode();
+        if (release_error_code.has_value())
+        {
+            message += "; ";
+            message += FormatError("failed to release F13 after the partial send", *release_error_code);
+        }
+        return {PlatformResultStatus::failure, std::move(message)};
     }
 
     return {};
@@ -122,7 +129,15 @@ PlatformResult WindowsPlatformBinding::DoubleClick()
 {
     if (!mouse_.DoubleClick())
     {
-        return {PlatformResultStatus::failure, FormatError("Failed to send a double-click", mouse_.LastErrorCode())};
+        std::string message = FormatError("Failed to send a double-click", mouse_.LastErrorCode());
+        const std::optional<DWORD> release_error_code = mouse_.LastReleaseErrorCode();
+        if (release_error_code.has_value())
+        {
+            message += "; ";
+            message +=
+                FormatError("failed to release the primary mouse button after the partial send", *release_error_code);
+        }
+        return {PlatformResultStatus::failure, std::move(message)};
     }
 
     return {};

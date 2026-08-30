@@ -43,6 +43,7 @@ if(DOUBLE_CLICK_HOTKEY_BUILD_APP)
             DOUBLE_CLICK_HOTKEY_PLATFORM_SOURCES
             src/platform/windows/console.cpp
             src/platform/windows/console_control_handler.cpp
+            src/platform/windows/input_injector.cpp
             src/platform/windows/instance_command.cpp
             src/platform/windows/keyboard_hook.cpp
             src/platform/windows/keyboard_sender.cpp
@@ -95,6 +96,8 @@ set(
     "${PROJECT_SOURCE_DIR}/src/platform/windows/console.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/console_control_handler.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/console_control_handler.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/input_injector.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/input_injector.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/instance_command.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/instance_command.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_hook.cpp"
@@ -111,6 +114,7 @@ set(
     "${PROJECT_SOURCE_DIR}/tests/application/application.test.cpp"
     "${PROJECT_SOURCE_DIR}/tests/application/launch_command.test.cpp"
     "${PROJECT_SOURCE_DIR}/tests/main.test.cpp"
+    "${PROJECT_SOURCE_DIR}/tests/platform/windows/input_senders.test.cpp"
     "${PROJECT_SOURCE_DIR}/tests/platform/windows/instance_command.test.cpp"
 )
 include(cmake/ClangFormat.cmake)
