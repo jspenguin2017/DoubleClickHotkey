@@ -29,11 +29,11 @@ the platform-independent application controller as a library so it can be built 
 
 ## Common Commands
 
-Run commands from the repository root. Node.js 22.12 or newer is preferred; CMake requires version 3.28 or newer.
+Run commands from the repository root. Node.js 24.19.0 or newer and CMake 3.28 or newer are required.
 
 - Install the locked document-formatting dependency with `npm install`.
-- Format supported documentation and configuration files with `npm run format`. Use `npm run format:nocache` when a full
-  formatting pass must ignore Prettier's cache, and `npm run format:check` for a non-writing check.
+- Format supported documentation, configuration files, and C++ sources with `npm run format`; use `npm run format:check`
+  for a non-writing check.
 - Configure, build, and test the portable core natively on Linux:
 
   ```sh
