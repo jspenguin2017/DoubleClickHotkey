@@ -21,8 +21,8 @@ struct InstanceCommandChannelNames
 };
 
 inline constexpr InstanceCommandChannelNames DefaultInstanceCommandChannelNames{
-    L"double-click-hotkey-command-event-v2-wzyids6rnh94128qrg5t",
-    L"double-click-hotkey-command-state-v2-wzyids6rnh94128qrg5t",
+    L"double-click-hotkey-command-event-v2-dd74d3c1-ded5-4d6c-869c-f06eb80200ee",
+    L"double-click-hotkey-command-state-v2-dd74d3c1-ded5-4d6c-869c-f06eb80200ee",
 };
 
 class InstanceCommandReceiver

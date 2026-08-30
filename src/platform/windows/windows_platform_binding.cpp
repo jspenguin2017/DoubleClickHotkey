@@ -15,7 +15,7 @@ namespace double_click_hotkey::windows
 {
 namespace
 {
-constexpr wchar_t SingleInstanceName[] = L"double-click-hotkey-mutex-wzyids6rnh94128qrg5t";
+constexpr wchar_t SingleInstanceName[] = L"double-click-hotkey-mutex-v2-dd74d3c1-ded5-4d6c-869c-f06eb80200ee";
 } // namespace
 
 PlatformResult WindowsPlatformBinding::RunService(HotkeyEventHandler hotkey_handler,
