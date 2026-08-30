@@ -17,6 +17,9 @@ namespace double_click_hotkey::windows
 class WindowsPlatformBinding final : public PlatformBinding
 {
   public:
+    WindowsPlatformBinding() = default;
+    explicit WindowsPlatformBinding(KeyboardSender::SendInputFunction send_input) noexcept;
+
     [[nodiscard]] PlatformResult RunService(HotkeyEventHandler hotkey_handler,
                                             WindowVisibilityHandler visibility_handler) override;
 
@@ -33,6 +36,7 @@ class WindowsPlatformBinding final : public PlatformBinding
 
   private:
     [[nodiscard]] static std::string FormatError(const char* message, unsigned long error_code);
+    [[nodiscard]] static std::string FormatInputInjectionError(const char* message, unsigned long error_code);
     [[nodiscard]] static InstanceCommand ToInstanceCommand(WindowVisibility visibility) noexcept;
     [[nodiscard]] PlatformResult RunMessageLoop(HotkeyEventHandler hotkey_handler,
                                                 WindowVisibilityHandler visibility_handler,

@@ -19,6 +19,12 @@ visible:
 Injection errors are logged without revealing a hidden console; use `--show` to inspect them. There is no hotkey for
 changing console visibility.
 
+[Windows restricts synthesized input](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput)
+to applications at an equal or lower integrity level. Double Click Hotkey therefore cannot double-click or send F13 to
+an elevated application unless it is running at the same or a higher integrity level. Windows does not identify when
+this restriction caused an injection failure, so a failure without an error code reports an integrity-level mismatch as
+a possible cause rather than a certainty.
+
 ## Platform support
 
 The executable supports only the latest generally available Windows 11 release. It can be built with MinGW-w64 on

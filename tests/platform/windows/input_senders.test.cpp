@@ -1,5 +1,6 @@
 #include "platform/windows/keyboard_sender.hpp"
 #include "platform/windows/mouse.hpp"
+#include "platform/windows/windows_platform_binding.hpp"
 
 #include <gtest/gtest.h>
 
@@ -206,6 +207,34 @@ TEST_F(InputSendersTest, PreservesTheMouseSendAndReleaseErrors)
     EXPECT_EQ(mouse.LastErrorCode(), ERROR_WRITE_FAULT);
     ASSERT_TRUE(mouse.LastReleaseErrorCode().has_value());
     EXPECT_EQ(*mouse.LastReleaseErrorCode(), ERROR_NOT_READY);
+}
+
+TEST_F(InputSendersTest, ExplainsAnF13InjectionFailureWithoutAnErrorCode)
+{
+    Plan({{0, ERROR_SUCCESS}});
+    WindowsPlatformBinding platform(StubSendInput);
+
+    const PlatformResult result = platform.SendF13();
+
+    EXPECT_EQ(result.status, PlatformResultStatus::failure);
+    EXPECT_EQ(result.error_message,
+              "Failed to send F13: Windows blocked or otherwise rejected the input without reporting an error code. "
+              "An integrity-level mismatch is one possible cause; if the target application is elevated, run Double "
+              "Click Hotkey at the same or a higher integrity level.");
+}
+
+TEST_F(InputSendersTest, ExplainsADoubleClickInjectionFailureWithoutAnErrorCode)
+{
+    Plan({{0, ERROR_SUCCESS}});
+    WindowsPlatformBinding platform(StubSendInput);
+
+    const PlatformResult result = platform.DoubleClick();
+
+    EXPECT_EQ(result.status, PlatformResultStatus::failure);
+    EXPECT_EQ(result.error_message,
+              "Failed to send a double-click: Windows blocked or otherwise rejected the input without reporting an "
+              "error code. An integrity-level mismatch is one possible cause; if the target application is elevated, "
+              "run Double Click Hotkey at the same or a higher integrity level.");
 }
 } // namespace
 } // namespace double_click_hotkey::windows

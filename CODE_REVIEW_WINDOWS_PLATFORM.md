@@ -11,22 +11,7 @@
 
 ## Findings
 
-### W-4: UIPI-blocked input can be reported as error code zero
-
-- Severity: **Low**
-- References: `src/platform/windows/input_injector.cpp:13-29` and
-  `src/platform/windows/windows_platform_binding.cpp:111-150`.
-- Problem: The input injector clears the thread's last-error value before calling `SendInput`, then propagates
-  `GetLastError()` whenever the inserted count is short. Windows explicitly states that neither the return value nor
-  `GetLastError` identifies a failure caused by User Interface Privilege Isolation (UIPI). Consequently, an attempt to
-  target an elevated application can leave the cleared value unchanged and be logged only as `error code: 0`, which
-  reads like success rather than a useful failure. See the
-  [Microsoft `SendInput` UIPI documentation](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput).
-- Impact: Users cannot diagnose why the utility fails against a higher-integrity target and receive no actionable hint
-  about the application's integrity-level limitation.
-- Recommendation: When injection is short and the captured error remains `ERROR_SUCCESS`, emit an explicit fallback
-  diagnostic explaining that Windows blocked or otherwise rejected the input and that an integrity-level mismatch is a
-  possible cause. Document the elevated-target limitation without claiming UIPI can be detected conclusively.
+No unresolved findings.
 
 ## Unresolved questions
 

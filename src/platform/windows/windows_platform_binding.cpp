@@ -18,6 +18,11 @@ namespace
 constexpr wchar_t SingleInstanceName[] = L"double-click-hotkey-mutex-v2-dd74d3c1-ded5-4d6c-869c-f06eb80200ee";
 } // namespace
 
+WindowsPlatformBinding::WindowsPlatformBinding(const KeyboardSender::SendInputFunction send_input) noexcept
+    : keyboard_sender_(send_input), mouse_(send_input)
+{
+}
+
 PlatformResult WindowsPlatformBinding::RunService(HotkeyEventHandler hotkey_handler,
                                                   WindowVisibilityHandler visibility_handler)
 {
@@ -112,12 +117,12 @@ PlatformResult WindowsPlatformBinding::SendF13()
 {
     if (!keyboard_sender_.SendF13())
     {
-        std::string message = FormatError("Failed to send F13", keyboard_sender_.LastErrorCode());
+        std::string message = FormatInputInjectionError("Failed to send F13", keyboard_sender_.LastErrorCode());
         const std::optional<DWORD> release_error_code = keyboard_sender_.LastReleaseErrorCode();
         if (release_error_code.has_value())
         {
             message += "; ";
-            message += FormatError("failed to release F13 after the partial send", *release_error_code);
+            message += FormatInputInjectionError("failed to release F13 after the partial send", *release_error_code);
         }
         return {PlatformResultStatus::failure, std::move(message)};
     }
@@ -129,13 +134,13 @@ PlatformResult WindowsPlatformBinding::DoubleClick()
 {
     if (!mouse_.DoubleClick())
     {
-        std::string message = FormatError("Failed to send a double-click", mouse_.LastErrorCode());
+        std::string message = FormatInputInjectionError("Failed to send a double-click", mouse_.LastErrorCode());
         const std::optional<DWORD> release_error_code = mouse_.LastReleaseErrorCode();
         if (release_error_code.has_value())
         {
             message += "; ";
-            message +=
-                FormatError("failed to release the primary mouse button after the partial send", *release_error_code);
+            message += FormatInputInjectionError("failed to release the primary mouse button after the partial send",
+                                                 *release_error_code);
         }
         return {PlatformResultStatus::failure, std::move(message)};
     }
@@ -148,6 +153,19 @@ std::string WindowsPlatformBinding::FormatError(const char* const message, const
     std::ostringstream output;
     output << message << ", error code: " << error_code;
     return output.str();
+}
+
+std::string WindowsPlatformBinding::FormatInputInjectionError(const char* const message, const unsigned long error_code)
+{
+    if (error_code != ERROR_SUCCESS)
+    {
+        return FormatError(message, error_code);
+    }
+
+    return std::string(message) +
+           ": Windows blocked or otherwise rejected the input without reporting an error code. An integrity-level "
+           "mismatch is one possible cause; if the target application is elevated, run Double Click Hotkey at the "
+           "same or a higher integrity level.";
 }
 
 InstanceCommand WindowsPlatformBinding::ToInstanceCommand(const WindowVisibility visibility) noexcept
