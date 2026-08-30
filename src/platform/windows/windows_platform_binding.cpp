@@ -66,20 +66,14 @@ PlatformResult WindowsPlatformBinding::ReserveSingleInstance()
 
 PlatformResult WindowsPlatformBinding::SendWindowCommand(const WindowVisibility visibility)
 {
-    const SingleInstance single_instance(SingleInstanceName);
-    if (single_instance.Status() == SingleInstanceStatus::acquired)
-    {
-        return {PlatformResultStatus::not_running, {}};
-    }
-    if (single_instance.Status() == SingleInstanceStatus::failed)
-    {
-        return {PlatformResultStatus::failure,
-                FormatError("Failed to open the single-instance mutex", single_instance.LastErrorCode())};
-    }
-
     DWORD error_code = ERROR_SUCCESS;
     if (!SendInstanceCommand(ToInstanceCommand(visibility), error_code))
     {
+        if (error_code == ERROR_FILE_NOT_FOUND)
+        {
+            return {PlatformResultStatus::not_running, {}};
+        }
+
         return {PlatformResultStatus::failure,
                 FormatError("Failed to send the command to the running instance", error_code)};
     }

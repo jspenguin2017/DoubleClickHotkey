@@ -11,24 +11,6 @@
 
 ## Findings
 
-### W-1: A control client can be mistaken for the running service
-
-- Severity: **Medium**
-- References: `src/platform/windows/single_instance.cpp:5-17`,
-  `src/platform/windows/windows_platform_binding.cpp:31-40`, and
-  `src/platform/windows/windows_platform_binding.cpp:67-73`.
-- Problem: `SendWindowCommand` probes for the service by constructing `SingleInstance`. That constructor calls
-  `CreateMutexW(..., TRUE, name)`, so when no mutex exists, a `--show` or `--hide` client creates and owns the same mutex
-  used to reserve the service. A service starting during the control client's short lifetime receives
-  `ERROR_ALREADY_EXISTS` and exits as though another service were running. The client simultaneously returns
-  `not_running`; once it exits, neither process owns the service reservation. This follows directly from
-  [the documented create-or-open and initial-ownership behavior of `CreateMutexW`](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createmutexw).
-- Impact: A concurrent visibility command can prevent a legitimate startup, leaving no hotkey service running until the
-  user starts it again. The race is especially plausible around login/startup automation and scripted control commands.
-- Recommendation: Separate reservation from observation. Have control clients use `OpenMutexW` (or open the receiver's
-  IPC endpoint directly) so they never create or own the service mutex. Treat a missing object as `not_running`, and map
-  shutdown races consistently to the same semantic outcome.
-
 ### W-2: Show/hide IPC does not preserve command order
 
 - Severity: **Medium**
