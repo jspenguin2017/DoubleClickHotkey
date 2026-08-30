@@ -10,9 +10,6 @@ class Console
     void Hide() noexcept;
     void Show() noexcept;
     void WriteLine(std::string_view message);
-    void ReportError(std::string_view message, bool wait_for_key = true);
-
-  private:
-    static void WaitForKey();
+    void WaitForKey();
 };
 } // namespace double_click_hotkey::windows

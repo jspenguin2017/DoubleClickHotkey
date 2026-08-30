@@ -22,16 +22,6 @@ void Console::WriteLine(const std::string_view message)
     std::cout << message << std::endl;
 }
 
-void Console::ReportError(const std::string_view message, const bool wait_for_key)
-{
-    Show();
-    WriteLine(message);
-    if (wait_for_key)
-    {
-        WaitForKey();
-    }
-}
-
 void Console::WaitForKey()
 {
     std::cout << "Press any key to continue...";

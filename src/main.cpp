@@ -8,7 +8,6 @@
 int main(const int argument_count, char* arguments[])
 {
     const bool has_launch_arguments = argument_count > 1;
-    const auto platform = double_click_hotkey::CreatePlatformBinding(!has_launch_arguments);
 
     std::vector<std::string_view> launch_arguments;
     if (has_launch_arguments)
@@ -21,6 +20,7 @@ int main(const int argument_count, char* arguments[])
     }
 
     const double_click_hotkey::LaunchCommand launch_command = double_click_hotkey::ParseLaunchCommand(launch_arguments);
+    const auto platform = double_click_hotkey::CreatePlatformBinding();
     double_click_hotkey::Application application(*platform, launch_command);
     return application.Run();
 }

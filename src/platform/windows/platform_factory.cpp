@@ -6,8 +6,8 @@
 
 namespace double_click_hotkey
 {
-std::unique_ptr<PlatformBinding> CreatePlatformBinding(const bool hide_window_immediately)
+std::unique_ptr<PlatformBinding> CreatePlatformBinding()
 {
-    return std::make_unique<windows::WindowsPlatformBinding>(hide_window_immediately);
+    return std::make_unique<windows::WindowsPlatformBinding>();
 }
 } // namespace double_click_hotkey

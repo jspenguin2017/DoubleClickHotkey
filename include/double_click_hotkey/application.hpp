@@ -13,9 +13,17 @@ class Application
     [[nodiscard]] int Run();
 
   private:
+    [[nodiscard]] int RunService();
+    [[nodiscard]] int SendWindowCommand(WindowVisibility visibility);
+    [[nodiscard]] int SendF13AfterDelay();
     [[nodiscard]] bool HandleHotkeyEvent(const HotkeyEvent& event);
+    void HandleWindowVisibility(WindowVisibility visibility);
+    void ReportError(std::string_view message, bool wait_for_key);
+    void ReportResultError(const PlatformResult& result, bool wait_for_key = false);
 
     PlatformBinding& platform_;
     LaunchCommand launch_command_;
+    bool hotkey_is_pressed_ = false;
+    HotkeyAction active_hotkey_action_ = HotkeyAction::none;
 };
 } // namespace double_click_hotkey

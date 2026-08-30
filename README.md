@@ -42,8 +42,10 @@ A native Linux build compiles the platform-independent application controller an
 a fake platform binding without creating the Windows application. This gives Linux development tools and CI a native
 target in addition to the full MinGW-w64 cross-build.
 
-The application depends on the abstract `PlatformBinding` interface rather than Win32 directly. CMake currently selects
-the Windows binding, while the platform-neutral entry point and controller can be reused by future bindings.
+The application depends on the abstract `PlatformBinding` interface rather than Win32 directly. The portable controller
+dispatches launch commands, owns user-facing outcomes and timing, and applies hotkey and window-visibility policy. The
+Windows binding only owns native service resources, event multiplexing, interprocess transport, and input/output calls.
+CMake currently selects that binding, while the entry point and controller can be reused by future bindings.
 
 ## Requirements
 
@@ -148,9 +150,11 @@ Tests use GoogleTest 1.18.0, pinned to a specific upstream revision and archive 
 domain under `tests/` and link against the platform-independent `DoubleClickHotkey::core` CMake target.
 
 Portable application behavior belongs in `double_click_hotkey_core`. Native APIs belong in a platform adapter such as
-`src/platform/windows/`, which implements `PlatformBinding` and supplies the platform-binding factory. To support
-another operating system, add its adapter and select its sources and native libraries in the platform section of
-`CMakeLists.txt`; the application controller and `src/main.cpp` do not need platform-specific changes.
+`src/platform/windows/`, which implements `PlatformBinding` and supplies the platform-binding factory. The contract is
+at the service level: an adapter owns its native event loop and resource lifetimes, while reporting semantic events and
+operation outcomes to the controller. To support another operating system, add its adapter and select its sources and
+native libraries in the platform section of `CMakeLists.txt`; the application controller and `src/main.cpp` do not need
+platform-specific changes.
 
 ## Formatting
 

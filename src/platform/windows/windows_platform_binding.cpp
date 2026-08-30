@@ -6,6 +6,8 @@
 
 #include <windows.h>
 
+#include <chrono>
+#include <memory>
 #include <sstream>
 #include <utility>
 
@@ -14,130 +16,122 @@ namespace double_click_hotkey::windows
 namespace
 {
 constexpr wchar_t SingleInstanceName[] = L"double-click-hotkey-mutex-wzyids6rnh94128qrg5t";
-constexpr char UsageMessage[] = "Usage: DoubleClickHotkey.exe [--show | --hide | --send-f13]";
 } // namespace
 
-WindowsPlatformBinding::WindowsPlatformBinding(const bool hide_window_immediately) noexcept
+PlatformResult WindowsPlatformBinding::RunService(HotkeyEventHandler hotkey_handler,
+                                                  WindowVisibilityHandler visibility_handler)
 {
-    if (hide_window_immediately)
+    InstanceCommandReceiver command_receiver;
+    if (!command_receiver.Initialize())
+    {
+        return {PlatformResultStatus::failure,
+                FormatError("Failed to create the instance command events", command_receiver.LastErrorCode())};
+    }
+
+    const SingleInstance single_instance(SingleInstanceName);
+    if (single_instance.Status() == SingleInstanceStatus::already_running)
+    {
+        return {PlatformResultStatus::already_running, {}};
+    }
+    if (single_instance.Status() == SingleInstanceStatus::failed)
+    {
+        return {PlatformResultStatus::failure,
+                FormatError("Failed to create the single-instance mutex", single_instance.LastErrorCode())};
+    }
+
+    return RunMessageLoop(std::move(hotkey_handler), std::move(visibility_handler), command_receiver);
+}
+
+PlatformResult WindowsPlatformBinding::ReserveSingleInstance()
+{
+    if (single_instance_reservation_ != nullptr)
+    {
+        return {PlatformResultStatus::failure, "The single application instance is already reserved."};
+    }
+
+    auto reservation = std::make_unique<SingleInstance>(SingleInstanceName);
+    if (reservation->Status() == SingleInstanceStatus::already_running)
+    {
+        return {PlatformResultStatus::already_running, {}};
+    }
+    if (reservation->Status() == SingleInstanceStatus::failed)
+    {
+        return {PlatformResultStatus::failure,
+                FormatError("Failed to create the single-instance mutex", reservation->LastErrorCode())};
+    }
+
+    single_instance_reservation_ = std::move(reservation);
+    return {};
+}
+
+PlatformResult WindowsPlatformBinding::SendWindowCommand(const WindowVisibility visibility)
+{
+    const SingleInstance single_instance(SingleInstanceName);
+    if (single_instance.Status() == SingleInstanceStatus::acquired)
+    {
+        return {PlatformResultStatus::not_running, {}};
+    }
+    if (single_instance.Status() == SingleInstanceStatus::failed)
+    {
+        return {PlatformResultStatus::failure,
+                FormatError("Failed to open the single-instance mutex", single_instance.LastErrorCode())};
+    }
+
+    DWORD error_code = ERROR_SUCCESS;
+    if (!SendInstanceCommand(ToInstanceCommand(visibility), error_code))
+    {
+        return {PlatformResultStatus::failure,
+                FormatError("Failed to send the command to the running instance", error_code)};
+    }
+
+    return {};
+}
+
+void WindowsPlatformBinding::SetWindowVisibility(const WindowVisibility visibility)
+{
+    if (visibility == WindowVisibility::shown)
+    {
+        console_.Show();
+    }
+    else
     {
         console_.Hide();
     }
 }
 
-int WindowsPlatformBinding::Run(const LaunchCommand launch_command, HotkeyEventHandler handler)
+void WindowsPlatformBinding::WriteLine(const std::string_view message)
 {
-    switch (launch_command)
-    {
-    case LaunchCommand::run:
-        return RunApplication(std::move(handler));
-
-    case LaunchCommand::show_window:
-        return SendConsoleCommand(InstanceCommand::show_window);
-
-    case LaunchCommand::hide_window:
-        return SendConsoleCommand(InstanceCommand::hide_window);
-
-    case LaunchCommand::send_f13:
-        return SendF13AfterDelay();
-
-    case LaunchCommand::invalid:
-        console_.ReportError(UsageMessage, false);
-        return 1;
-    }
-
-    console_.ReportError(UsageMessage, false);
-    return 1;
+    console_.WriteLine(message);
 }
 
-int WindowsPlatformBinding::RunApplication(HotkeyEventHandler handler)
+void WindowsPlatformBinding::WaitFor(const std::chrono::milliseconds duration)
 {
-    InstanceCommandReceiver command_receiver;
-    if (!command_receiver.Initialize())
-    {
-        console_.ReportError(
-            FormatError("Failed to create the instance command events", command_receiver.LastErrorCode()));
-        return 1;
-    }
-
-    const SingleInstance single_instance(SingleInstanceName);
-    if (single_instance.Status() == SingleInstanceStatus::already_running)
-    {
-        console_.ReportError("Another instance of this application is already running.");
-        return 1;
-    }
-    if (single_instance.Status() == SingleInstanceStatus::failed)
-    {
-        console_.ReportError(
-            FormatError("Failed to create the single-instance mutex", single_instance.LastErrorCode()));
-        return 1;
-    }
-
-    const std::string error = RunMessageLoop(std::move(handler), command_receiver);
-    if (!error.empty())
-    {
-        console_.ReportError(error);
-        return 1;
-    }
-
-    return 0;
+    Sleep(static_cast<DWORD>(duration.count()));
 }
 
-int WindowsPlatformBinding::SendConsoleCommand(const InstanceCommand command)
+void WindowsPlatformBinding::WaitForKey()
 {
-    const SingleInstance single_instance(SingleInstanceName);
-    if (single_instance.Status() == SingleInstanceStatus::acquired)
-    {
-        console_.ReportError("No running instance of this application was found.", false);
-        return 1;
-    }
-    if (single_instance.Status() == SingleInstanceStatus::failed)
-    {
-        console_.ReportError(FormatError("Failed to open the single-instance mutex", single_instance.LastErrorCode()),
-                             false);
-        return 1;
-    }
-
-    DWORD error_code = ERROR_SUCCESS;
-    if (!SendInstanceCommand(command, error_code))
-    {
-        console_.ReportError(FormatError("Failed to send the command to the running instance", error_code), false);
-        return 1;
-    }
-
-    return 0;
+    console_.WaitForKey();
 }
 
-int WindowsPlatformBinding::SendF13AfterDelay()
+PlatformResult WindowsPlatformBinding::SendF13()
 {
-    const SingleInstance single_instance(SingleInstanceName);
-    if (single_instance.Status() == SingleInstanceStatus::already_running)
-    {
-        console_.ReportError("Another instance of this application is already running. Close it before sending F13.",
-                             false);
-        return 1;
-    }
-    if (single_instance.Status() == SingleInstanceStatus::failed)
-    {
-        console_.ReportError(FormatError("Failed to create the single-instance mutex", single_instance.LastErrorCode()),
-                             false);
-        return 1;
-    }
-
-    console_.WriteLine("F13 will be sent in 5 seconds. Focus the target application now.");
-    Sleep(5000);
     if (!keyboard_sender_.SendF13())
     {
-        console_.ReportError(FormatError("Failed to send F13", keyboard_sender_.LastErrorCode()), false);
-        return 1;
+        return {PlatformResultStatus::failure, FormatError("Failed to send F13", keyboard_sender_.LastErrorCode())};
     }
 
-    return 0;
+    return {};
 }
 
-void WindowsPlatformBinding::DoubleClick()
+PlatformResult WindowsPlatformBinding::DoubleClick()
 {
-    mouse_.DoubleClick();
+    if (!mouse_.DoubleClick())
+    {
+        return {PlatformResultStatus::failure, FormatError("Failed to send a double-click", mouse_.LastErrorCode())};
+    }
+
+    return {};
 }
 
 std::string WindowsPlatformBinding::FormatError(const char* const message, const unsigned long error_code)
@@ -147,19 +141,27 @@ std::string WindowsPlatformBinding::FormatError(const char* const message, const
     return output.str();
 }
 
-std::string WindowsPlatformBinding::RunMessageLoop(HotkeyEventHandler handler,
-                                                   const InstanceCommandReceiver& command_receiver)
+InstanceCommand WindowsPlatformBinding::ToInstanceCommand(const WindowVisibility visibility) noexcept
+{
+    return visibility == WindowVisibility::shown ? InstanceCommand::show_window : InstanceCommand::hide_window;
+}
+
+PlatformResult WindowsPlatformBinding::RunMessageLoop(HotkeyEventHandler hotkey_handler,
+                                                      WindowVisibilityHandler visibility_handler,
+                                                      const InstanceCommandReceiver& command_receiver)
 {
     ConsoleControlHandler control_handler;
     if (!control_handler.Install())
     {
-        return FormatError("Failed to set console control handler", control_handler.LastErrorCode());
+        return {PlatformResultStatus::failure,
+                FormatError("Failed to set console control handler", control_handler.LastErrorCode())};
     }
 
     KeyboardHook keyboard_hook;
-    if (!keyboard_hook.Install(std::move(handler)))
+    if (!keyboard_hook.Install(std::move(hotkey_handler)))
     {
-        return FormatError("Failed to set keyboard hook", keyboard_hook.LastErrorCode());
+        return {PlatformResultStatus::failure,
+                FormatError("Failed to set keyboard hook", keyboard_hook.LastErrorCode())};
     }
 
     const InstanceCommandReceiver::Handles& event_handles = command_receiver.EventHandles();
@@ -172,23 +174,18 @@ std::string WindowsPlatformBinding::RunMessageLoop(HotkeyEventHandler handler,
         if (result >= first_event_result && result < message_result)
         {
             const InstanceCommand command = command_receiver.CommandAt(result - first_event_result);
-            if (command == InstanceCommand::show_window)
-            {
-                console_.Show();
-            }
-            else
-            {
-                console_.Hide();
-            }
+            visibility_handler(command == InstanceCommand::show_window ? WindowVisibility::shown
+                                                                       : WindowVisibility::hidden);
             continue;
         }
         if (result == WAIT_FAILED)
         {
-            return FormatError("Failed to wait for a message or instance command", GetLastError());
+            return {PlatformResultStatus::failure,
+                    FormatError("Failed to wait for a message or instance command", GetLastError())};
         }
         if (result != message_result)
         {
-            return "Received an unexpected message wait result.";
+            return {PlatformResultStatus::failure, "Received an unexpected message wait result."};
         }
 
         MSG message{};
