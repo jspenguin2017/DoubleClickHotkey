@@ -1,7 +1,5 @@
 #include "double_click_hotkey/application.hpp"
 
-#include "double_click_hotkey/hotkey_action.hpp"
-
 #include <chrono>
 
 namespace double_click_hotkey
@@ -113,31 +111,18 @@ bool Application::HandleHotkeyEvent(const HotkeyEvent& event)
 {
     if (event.transition == KeyTransition::released)
     {
-        const HotkeyAction released_action =
-            hotkey_is_pressed_ ? active_hotkey_action_ : GetHotkeyAction(event.modifiers);
         hotkey_is_pressed_ = false;
-        active_hotkey_action_ = HotkeyAction::none;
-        return released_action != HotkeyAction::none;
+        return true;
     }
 
     if (hotkey_is_pressed_)
     {
-        return active_hotkey_action_ != HotkeyAction::none;
+        return true;
     }
 
     hotkey_is_pressed_ = true;
-    active_hotkey_action_ = GetHotkeyAction(event.modifiers);
-    switch (active_hotkey_action_)
-    {
-    case HotkeyAction::double_click:
-        ReportResultError(platform_.DoubleClick());
-        break;
-
-    case HotkeyAction::none:
-        break;
-    }
-
-    return active_hotkey_action_ != HotkeyAction::none;
+    ReportResultError(platform_.DoubleClick());
+    return true;
 }
 
 void Application::HandleWindowVisibility(const WindowVisibility visibility)

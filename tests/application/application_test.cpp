@@ -249,10 +249,10 @@ TEST(ApplicationTest, ReportsUsageForAnInvalidLaunchCommand)
     ExpectErrorReported(platform, "Usage: DoubleClickHotkey [--show | --hide | --send-f13]", false);
 }
 
-TEST(ApplicationTest, DoubleClicksAndConsumesAnUnmodifiedKeyPress)
+TEST(ApplicationTest, DoubleClicksAndConsumesAKeyPress)
 {
     FakePlatformBinding platform;
-    platform.hotkey_events.push_back({KeyTransition::pressed, {}});
+    platform.hotkey_events.push_back({KeyTransition::pressed});
     Application application(platform);
 
     static_cast<void>(application.Run());
@@ -266,8 +266,8 @@ TEST(ApplicationTest, DoubleClicksOnlyOncePerPhysicalPress)
 {
     FakePlatformBinding platform;
     platform.hotkey_events = {
-        {KeyTransition::pressed, {}},  {KeyTransition::pressed, {}}, {KeyTransition::pressed, {}},
-        {KeyTransition::released, {}}, {KeyTransition::pressed, {}}, {KeyTransition::released, {}},
+        {KeyTransition::pressed},  {KeyTransition::pressed}, {KeyTransition::pressed},
+        {KeyTransition::released}, {KeyTransition::pressed}, {KeyTransition::released},
     };
     Application application(platform);
 
@@ -277,16 +277,10 @@ TEST(ApplicationTest, DoubleClicksOnlyOncePerPhysicalPress)
     EXPECT_EQ(platform.handled_hotkey_events, (std::vector<bool>{true, true, true, true, true, true}));
 }
 
-TEST(ApplicationTest, ConsumesAModifiedHotkeyReleaseWithoutRepeatingItsAction)
+TEST(ApplicationTest, ConsumesAHotkeyReleaseWithoutRepeatingItsAction)
 {
-    ModifierState modifiers;
-    modifiers.alt = true;
-    modifiers.control = true;
-    modifiers.shift = true;
-    modifiers.system = true;
-
     FakePlatformBinding platform;
-    platform.hotkey_events.push_back({KeyTransition::released, modifiers});
+    platform.hotkey_events.push_back({KeyTransition::released});
     Application application(platform);
 
     static_cast<void>(application.Run());
@@ -296,29 +290,10 @@ TEST(ApplicationTest, ConsumesAModifiedHotkeyReleaseWithoutRepeatingItsAction)
     EXPECT_TRUE(platform.handled_hotkey_events.front());
 }
 
-TEST(ApplicationTest, DoubleClicksAndConsumesAPressWithEveryModifier)
-{
-    ModifierState modifiers;
-    modifiers.alt = true;
-    modifiers.control = true;
-    modifiers.shift = true;
-    modifiers.system = true;
-
-    FakePlatformBinding platform;
-    platform.hotkey_events.push_back({KeyTransition::pressed, modifiers});
-    Application application(platform);
-
-    static_cast<void>(application.Run());
-
-    EXPECT_EQ(platform.double_click_count, 1);
-    ASSERT_EQ(platform.handled_hotkey_events.size(), 1U);
-    EXPECT_TRUE(platform.handled_hotkey_events.front());
-}
-
 TEST(ApplicationTest, ReportsADoubleClickInjectionFailureAndStillConsumesTheHotkey)
 {
     FakePlatformBinding platform;
-    platform.hotkey_events.push_back({KeyTransition::pressed, {}});
+    platform.hotkey_events.push_back({KeyTransition::pressed});
     platform.double_click_result = {PlatformResultStatus::failure, "double-click failed"};
     Application application(platform);
 

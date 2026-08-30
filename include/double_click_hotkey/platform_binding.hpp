@@ -1,7 +1,5 @@
 #pragma once
 
-#include "double_click_hotkey/hotkey_action.hpp"
-
 #include <chrono>
 #include <functional>
 #include <string>
@@ -18,7 +16,6 @@ enum class KeyTransition
 struct HotkeyEvent
 {
     KeyTransition transition = KeyTransition::pressed;
-    ModifierState modifiers;
 };
 
 // Returning true tells the binding to suppress the native hotkey transition.

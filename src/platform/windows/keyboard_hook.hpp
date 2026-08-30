@@ -22,7 +22,6 @@ class KeyboardHook
 
   private:
     static LRESULT CALLBACK HandleKeyboardEvent(int code, WPARAM message, LPARAM data);
-    [[nodiscard]] static ModifierState GetModifierState() noexcept;
     [[nodiscard]] LRESULT DispatchKeyboardEvent(int code, WPARAM message, LPARAM data);
 
     static KeyboardHook* active_hook_;

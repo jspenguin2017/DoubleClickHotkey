@@ -24,7 +24,6 @@ add_library(
     STATIC
         src/application/application.cpp
         src/application/launch_command.cpp
-        src/hotkey/hotkey_action.cpp
 )
 add_library(DoubleClickHotkey::core ALIAS double_click_hotkey_core)
 
@@ -86,13 +85,11 @@ endif()
 set(
     DOUBLE_CLICK_HOTKEY_FORMAT_FILES
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/application.hpp"
-    "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/hotkey_action.hpp"
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/launch_command.hpp"
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/platform_binding.hpp"
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/platform_factory.hpp"
     "${PROJECT_SOURCE_DIR}/src/application/application.cpp"
     "${PROJECT_SOURCE_DIR}/src/application/launch_command.cpp"
-    "${PROJECT_SOURCE_DIR}/src/hotkey/hotkey_action.cpp"
     "${PROJECT_SOURCE_DIR}/src/main.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/console.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/console.hpp"
@@ -113,7 +110,6 @@ set(
     "${PROJECT_SOURCE_DIR}/src/platform/windows/windows_platform_binding.hpp"
     "${PROJECT_SOURCE_DIR}/tests/application/application_test.cpp"
     "${PROJECT_SOURCE_DIR}/tests/application/launch_command_test.cpp"
-    "${PROJECT_SOURCE_DIR}/tests/hotkey/hotkey_action_test.cpp"
 )
 include(cmake/ClangFormat.cmake)
 

@@ -57,16 +57,6 @@ LRESULT CALLBACK KeyboardHook::HandleKeyboardEvent(const int code, const WPARAM 
     return active_hook_->DispatchKeyboardEvent(code, message, data);
 }
 
-ModifierState KeyboardHook::GetModifierState() noexcept
-{
-    return {
-        GetKeyState(VK_MENU) < 0,
-        GetKeyState(VK_CONTROL) < 0,
-        GetKeyState(VK_SHIFT) < 0,
-        GetKeyState(VK_LWIN) < 0 || GetKeyState(VK_RWIN) < 0,
-    };
-}
-
 LRESULT KeyboardHook::DispatchKeyboardEvent(const int code, const WPARAM message, const LPARAM data)
 {
     if (code < 0)
@@ -87,10 +77,7 @@ LRESULT KeyboardHook::DispatchKeyboardEvent(const int code, const WPARAM message
         return CallNextHookEx(handle_, code, message, data);
     }
 
-    const HotkeyEvent event{
-        is_key_down ? KeyTransition::pressed : KeyTransition::released,
-        GetModifierState(),
-    };
+    const HotkeyEvent event{is_key_down ? KeyTransition::pressed : KeyTransition::released};
     if (handler_(event))
     {
         return 1;

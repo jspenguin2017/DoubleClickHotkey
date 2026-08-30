@@ -1,8 +1,7 @@
 # AGENTS.md
 
 Double Click Hotkey is a C++17 Windows 11 utility that turns F13 into a global double-click shortcut. CMake also exposes
-the platform-independent application controller and hotkey policy as a library so they can be built and tested natively
-on Linux.
+the platform-independent application controller as a library so it can be built and tested natively on Linux.
 
 ## Repository Map
 
@@ -13,14 +12,11 @@ on Linux.
   contract.
 - `include/double_click_hotkey/platform_binding.hpp` defines the input/output boundary implemented by native adapters;
   `include/double_click_hotkey/platform_factory.hpp` declares the CMake-selected binding factory.
-- `include/double_click_hotkey/hotkey_action.hpp` declares the portable modifier-to-action API.
-- `src/hotkey/hotkey_action.cpp` implements that API and is compiled into the `DoubleClickHotkey::core` static library.
 - `src/platform/windows/` contains the Win32 binding, divided into console, control-handler, instance-command,
   keyboard-hook, keyboard-sender, mouse, and single-instance components. No Win32 APIs belong in the portable
-  application or hotkey domains.
-- `tests/application/` verifies launch parsing and orchestration through a fake binding, while
-  `tests/hotkey/hotkey_action_test.cpp` covers the portable hotkey policy; `tests/CMakeLists.txt` defines the test
-  executable.
+  application domain.
+- `tests/application/` verifies launch parsing and orchestration through a fake binding; `tests/CMakeLists.txt` defines
+  the test executable.
 - `CMakeLists.txt` defines the core library, the CMake-selected platform adapter, optional application, GoogleTest
   dependency, warnings, and C++ formatting targets.
 - `CMakePresets.json` contains native Linux, Linux-to-Windows MinGW-w64, and Windows MinGW-w64 configure/build/test

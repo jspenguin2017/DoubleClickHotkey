@@ -38,9 +38,9 @@ The application supports only the latest generally available Windows 11 release.
 supported. It can be built with MinGW-w64 on Windows or cross-compiled from Linux, but the resulting executable is
 intended to run only on Windows 11.
 
-A native Linux build compiles the platform-independent application controller and hotkey policy, then runs both through
-a fake platform binding without creating the Windows application. This gives Linux development tools and CI a native
-target in addition to the full MinGW-w64 cross-build.
+A native Linux build compiles the platform-independent application controller, then runs it through a fake platform
+binding without creating the Windows application. This gives Linux development tools and CI a native target in addition
+to the full MinGW-w64 cross-build.
 
 The application depends on the abstract `PlatformBinding` interface rather than Win32 directly. The portable controller
 dispatches launch commands, owns user-facing outcomes and timing, and applies hotkey and window-visibility policy. The
@@ -185,9 +185,8 @@ Replace `linux-native-debug` with any configured build preset.
 
 ```text
 cmake/                  CMake helpers and cross-compilation toolchains
-include/                Public, platform-independent contracts and hotkey policy
+include/                Public, platform-independent contracts
 src/application/        Application orchestration
-src/hotkey/             Modifier-to-action policy implementation
 src/platform/windows/   Win32 platform binding and native service adapters
 src/main.cpp             Platform-neutral composition root
 scripts/                 Cross-platform npm command helpers
