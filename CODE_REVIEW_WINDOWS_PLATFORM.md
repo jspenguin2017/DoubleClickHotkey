@@ -11,24 +11,6 @@
 
 ## Findings
 
-### W-2: Show/hide IPC does not preserve command order
-
-- Severity: **Medium**
-- References: `src/platform/windows/instance_command.cpp:35-42`,
-  `src/platform/windows/instance_command.cpp:60-63`, `src/platform/windows/instance_command.cpp:70-82`, and
-  `src/platform/windows/windows_platform_binding.cpp:167-185`.
-- Problem: Show and hide are represented by separate auto-reset events in a fixed array (`show` at index 0 and `hide` at
-  index 1). If a hide command is followed by a show command before the service consumes either event, both handles are
-  signaled. The wait checks handles in array order, so the service consumes show first and hide second, ending hidden
-  even though show was the latest command. Auto-reset events also retain only signaled/nonsignaled state rather than a
-  command sequence. Microsoft documents both [auto-reset event behavior](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createeventw)
-  and [the first-signaled-handle selection rule for message waits](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-msgwaitformultipleobjects).
-- Impact: Closely spaced opposing control commands can produce a final console state that contradicts invocation order,
-  which makes scripting and rapid user commands nondeterministic.
-- Recommendation: Use an IPC mechanism that carries an ordered command stream, such as a named pipe, or a single wake
-  event paired with shared state containing a monotonically increasing sequence and the latest requested visibility.
-  Ensure the receiver applies commands in send order or explicitly implements last-write-wins semantics.
-
 ### W-3: Partial input injection can leave a key or mouse button pressed
 
 - Severity: **Medium**
@@ -53,8 +35,8 @@
   whenever the inserted count is short. Windows explicitly states that neither the return value nor `GetLastError`
   identifies a failure caused by User Interface Privilege Isolation (UIPI). Consequently, an attempt to target an
   elevated application can leave the cleared value unchanged and be logged only as `error code: 0`, which reads like
-  success rather than a useful failure.
-  See the [Microsoft `SendInput` UIPI documentation](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput).
+  success rather than a useful failure. See the
+  [Microsoft `SendInput` UIPI documentation](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput).
 - Impact: Users cannot diagnose why the utility fails against a higher-integrity target and receive no actionable hint
   about the application's integrity-level limitation.
 - Recommendation: When injection is short and the captured error remains `ERROR_SUCCESS`, emit an explicit fallback

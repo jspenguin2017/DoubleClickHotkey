@@ -36,7 +36,7 @@ class WindowsPlatformBinding final : public PlatformBinding
     [[nodiscard]] static InstanceCommand ToInstanceCommand(WindowVisibility visibility) noexcept;
     [[nodiscard]] PlatformResult RunMessageLoop(HotkeyEventHandler hotkey_handler,
                                                 WindowVisibilityHandler visibility_handler,
-                                                const InstanceCommandReceiver& command_receiver);
+                                                InstanceCommandReceiver& command_receiver);
 
     Console console_;
     KeyboardSender keyboard_sender_;

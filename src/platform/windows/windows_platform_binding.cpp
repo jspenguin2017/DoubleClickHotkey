@@ -21,13 +21,6 @@ constexpr wchar_t SingleInstanceName[] = L"double-click-hotkey-mutex-wzyids6rnh9
 PlatformResult WindowsPlatformBinding::RunService(HotkeyEventHandler hotkey_handler,
                                                   WindowVisibilityHandler visibility_handler)
 {
-    InstanceCommandReceiver command_receiver;
-    if (!command_receiver.Initialize())
-    {
-        return {PlatformResultStatus::failure,
-                FormatError("Failed to create the instance command events", command_receiver.LastErrorCode())};
-    }
-
     const SingleInstance single_instance(SingleInstanceName);
     if (single_instance.Status() == SingleInstanceStatus::already_running)
     {
@@ -37,6 +30,13 @@ PlatformResult WindowsPlatformBinding::RunService(HotkeyEventHandler hotkey_hand
     {
         return {PlatformResultStatus::failure,
                 FormatError("Failed to create the single-instance mutex", single_instance.LastErrorCode())};
+    }
+
+    InstanceCommandReceiver command_receiver;
+    if (!command_receiver.Initialize())
+    {
+        return {PlatformResultStatus::failure,
+                FormatError("Failed to initialize the instance command receiver", command_receiver.LastErrorCode())};
     }
 
     return RunMessageLoop(std::move(hotkey_handler), std::move(visibility_handler), command_receiver);
@@ -142,7 +142,7 @@ InstanceCommand WindowsPlatformBinding::ToInstanceCommand(const WindowVisibility
 
 PlatformResult WindowsPlatformBinding::RunMessageLoop(HotkeyEventHandler hotkey_handler,
                                                       WindowVisibilityHandler visibility_handler,
-                                                      const InstanceCommandReceiver& command_receiver)
+                                                      InstanceCommandReceiver& command_receiver)
 {
     ConsoleControlHandler control_handler;
     if (!control_handler.Install())
@@ -173,9 +173,12 @@ PlatformResult WindowsPlatformBinding::RunMessageLoop(HotkeyEventHandler hotkey_
         const DWORD message_result = first_event_result + static_cast<DWORD>(event_handles.size());
         if (result >= first_event_result && result < message_result)
         {
-            const InstanceCommand command = command_receiver.CommandAt(result - first_event_result);
-            visibility_handler(command == InstanceCommand::show_window ? WindowVisibility::shown
-                                                                       : WindowVisibility::hidden);
+            const std::optional<InstanceCommand> command = command_receiver.TakeLatestCommand();
+            if (command.has_value())
+            {
+                visibility_handler(*command == InstanceCommand::show_window ? WindowVisibility::shown
+                                                                            : WindowVisibility::hidden);
+            }
             continue;
         }
         if (result == WAIT_FAILED)
