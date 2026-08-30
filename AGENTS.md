@@ -27,6 +27,13 @@ the platform-independent application controller as a library so it can be built 
 - `package.json`, `.prettierrc.json`, and `.prettierignore` configure formatting for documentation and configuration
   files. Prettier does not format the C++ sources.
 
+## Testing Requirements
+
+- Add only cross-platform unit tests that compile and run in every supported native test environment, including Linux
+  and Windows.
+- Test platform-independent behavior through portable interfaces and fakes. Do not add unit tests that depend directly
+  on Win32 APIs, Windows headers, or platform-specific test gating.
+
 ## Common Commands
 
 Run commands from the repository root. Node.js 24.19.0 or newer and CMake 3.28 or newer are required.

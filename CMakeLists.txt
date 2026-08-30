@@ -114,8 +114,6 @@ set(
     "${PROJECT_SOURCE_DIR}/tests/application/application.test.cpp"
     "${PROJECT_SOURCE_DIR}/tests/application/launch_command.test.cpp"
     "${PROJECT_SOURCE_DIR}/tests/main.test.cpp"
-    "${PROJECT_SOURCE_DIR}/tests/platform/windows/input_senders.test.cpp"
-    "${PROJECT_SOURCE_DIR}/tests/platform/windows/instance_command.test.cpp"
 )
 include(cmake/ClangFormat.cmake)
 
