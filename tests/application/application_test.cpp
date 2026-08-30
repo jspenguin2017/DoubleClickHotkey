@@ -284,7 +284,7 @@ TEST(ApplicationTest, DoesNotDoubleClickForAHotkeyRelease)
     EXPECT_EQ(platform.double_click_count, 0);
 }
 
-TEST(ApplicationTest, ReportsADoubleClickInjectionFailure)
+TEST(ApplicationTest, LogsADoubleClickInjectionFailureWithoutShowingTheWindow)
 {
     FakePlatformBinding platform;
     platform.hotkey_events.push_back({KeyTransition::pressed});
@@ -293,7 +293,10 @@ TEST(ApplicationTest, ReportsADoubleClickInjectionFailure)
 
     static_cast<void>(application.Run());
 
-    ExpectErrorReported(platform, "double-click failed", false);
+    ASSERT_EQ(platform.written_lines.size(), 1U);
+    EXPECT_EQ(platform.written_lines.front(), "double-click failed");
+    ASSERT_EQ(platform.window_visibility_changes.size(), 1U);
+    EXPECT_EQ(platform.window_visibility_changes.front(), WindowVisibility::hidden);
 }
 } // namespace
 } // namespace double_click_hotkey

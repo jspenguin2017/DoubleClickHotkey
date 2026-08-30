@@ -26,8 +26,6 @@ the platform-independent application controller as a library so it can be built 
 - `README.md` is the user-facing behavior, setup, build, test, and installation guide.
 - `package.json`, `.prettierrc.json`, and `.prettierignore` configure formatting for documentation and configuration
   files. Prettier does not format the C++ sources.
-- `CODE_REVIEW_BUILD_SETUP.md` and `CODE_REVIEW_RUNTIME.md` are review records tied to an older repository revision;
-  verify their claims against the current source before acting on them.
 
 ## Common Commands
 

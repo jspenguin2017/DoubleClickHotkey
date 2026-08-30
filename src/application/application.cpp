@@ -121,7 +121,11 @@ void Application::HandleHotkeyEvent(const HotkeyEvent& event)
     }
 
     hotkey_is_pressed_ = true;
-    ReportResultError(platform_.DoubleClick());
+    const PlatformResult result = platform_.DoubleClick();
+    if (result.status == PlatformResultStatus::failure)
+    {
+        platform_.WriteLine(result.error_message);
+    }
 }
 
 void Application::HandleWindowVisibility(const WindowVisibility visibility)

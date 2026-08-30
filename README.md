@@ -10,6 +10,9 @@ Press <kbd>F13</kbd> to double-click. The application consumes F13 and performs 
 The console window is hidden when the application starts normally. Use the command-line options below to show or hide
 the running application's window; there is no keyboard shortcut for changing its visibility.
 
+If a double-click cannot be fully injected, the application logs the error to its console without making a hidden
+console visible. Use `--show` to inspect logged errors.
+
 Only one hotkey-service instance can run at a time. The show and hide commands are short-lived control clients.
 
 ## Command line
