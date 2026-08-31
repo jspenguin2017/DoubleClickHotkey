@@ -52,6 +52,7 @@ bool KeyboardHook::Install(HotkeyEventHandler handler)
 
     last_error_code_ = ERROR_SUCCESS;
     hotkey_is_pressed_ = false;
+    pass_hotkey_through_until_release_ = GetAsyncKeyState(VK_F13) < 0;
     event_queue_failed_ = false;
     return true;
 }
@@ -109,6 +110,15 @@ LRESULT KeyboardHook::DispatchKeyboardEvent(const int code, const WPARAM message
         return CallNextHookEx(handle_, code, message, data);
     }
 
+    if (pass_hotkey_through_until_release_)
+    {
+        if (is_key_up)
+        {
+            pass_hotkey_through_until_release_ = false;
+        }
+        return CallNextHookEx(handle_, code, message, data);
+    }
+
     if (is_key_down)
     {
         if (!hotkey_is_pressed_)
@@ -123,8 +133,10 @@ LRESULT KeyboardHook::DispatchKeyboardEvent(const int code, const WPARAM message
     {
         hotkey_is_pressed_ = false;
         QueueEvent(KeyTransition::released);
+        return 1;
     }
-    return 1;
+
+    return CallNextHookEx(handle_, code, message, data);
 }
 
 void KeyboardHook::QueueEvent(const KeyTransition transition) noexcept

@@ -34,6 +34,7 @@ class KeyboardHook
     DWORD owner_thread_id_ = 0;
     DWORD last_error_code_ = ERROR_SUCCESS;
     bool hotkey_is_pressed_ = false;
+    bool pass_hotkey_through_until_release_ = false;
     bool event_queue_failed_ = false;
 };
 } // namespace double_click_hotkey::windows
