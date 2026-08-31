@@ -4,8 +4,7 @@ Double Click Hotkey is a small Windows 11 utility that turns <kbd>F13</kbd> into
 
 ## Usage
 
-Run `DoubleClickHotkey.exe` and press <kbd>F13</kbd> to double-click. The application consumes F13 even when
-<kbd>Ctrl</kbd>, <kbd>Shift</kbd>, <kbd>Alt</kbd>, or either <kbd>Win</kbd> key is held.
+Run `DoubleClickHotkey.exe` and press <kbd>F13</kbd> to double-click. The application consumes <kbd>F13</kbd> events.
 
 The service allows one instance per interactive Windows session, so users in different sessions can each run their own
 instance. It hides its console at startup unless `--start-shown` is used. The other commands are one-shot operations and
@@ -18,9 +17,9 @@ keep their own console visible:
 | `DoubleClickHotkey.exe --hide`        | Hides the running service's console, or reports that no ready instance is available.          |
 | `DoubleClickHotkey.exe --send-f13`    | With no service running, waits five seconds and sends one F13 press for hotkey configuration. |
 
-Injection errors are logged without revealing a hidden console; use `--show` to inspect them. There is no hotkey for
-changing console visibility. A `--show` or `--hide` command issued while the service is still initializing may fail;
-retry it after startup, or use `--start-shown` when the console must be visible from the beginning.
+Double-click injection errors are logged without revealing a hidden console; use `--show` to inspect them. A `--show` or
+`--hide` command issued while the service is still initializing may fail; use `--start-shown` when the console must be
+visible from the beginning.
 
 Showing and hiding the console are intentionally not treated as sensitive operations. Within the same interactive
 session, a non-elevated launch may show or hide a service that was started elevated. This permission does not grant the
@@ -34,8 +33,8 @@ a possible cause rather than a certainty.
 
 ## Platform support
 
-The executable supports only the latest generally available Windows 11 release. It can be built with MinGW-w64 on
-Windows or cross-compiled from Linux. Linux also has a native target for testing the platform-independent controller.
+The executable only supports Windows 11. It can be built with MinGW-w64 on Windows or cross-compiled from Linux. Linux
+also has a native target for testing the platform-independent controller.
 
 ## Requirements
 
@@ -49,7 +48,7 @@ The npm workflows additionally require Node.js 24.19.0 or newer and npm. Windows
 toolchain; on Linux, the default cross-compilation tools are `x86_64-w64-mingw32-gcc`, `x86_64-w64-mingw32-g++`, and
 `x86_64-w64-mingw32-windres`.
 
-On Debian or Ubuntu, the C++ build tools can be installed with:
+On Ubuntu 24, the C++ build tools can be installed with:
 
 ```sh
 sudo apt install clang-format cmake g++ mingw-w64 ninja-build
