@@ -31,6 +31,27 @@ an elevated application unless it is running at the same or a higher integrity l
 this restriction caused an injection failure, so a failure without an error code reports an integrity-level mismatch as
 a possible cause rather than a certainty.
 
+## Security model
+
+Double Click Hotkey is designed to resist an ordinary webpage running in a secure, uncompromised browser; browser
+extensions are not part of this attacker model. It has no network listener, registered URL protocol, file association,
+browser native-messaging integration, or web-content parser. Web content cannot directly access the utility's Win32
+named objects or thread-message queue. Script-created
+[DOM events are untrusted browser events](https://dom.spec.whatwg.org/#dom-event-istrusted); they do not create the
+Windows keyboard input observed by the
+[`WH_KEYBOARD_LL` hook](https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc).
+
+When Windows delivers F13, the utility intentionally sends a primary-button double-click at the current pointer
+location. A webpage under the pointer can therefore receive the same interaction it would receive from that
+user-requested double-click. The cross-process command channel accepts only `--show` and `--hide`; it cannot request F13
+or mouse input injection through the running service.
+
+Denial of service by a native process in the same interactive session is outside the threat model. Such a process can
+pre-create the utility's predictable named kernel objects to block startup, or repeatedly signal the visibility-command
+event to starve the service's message loop. These limitations do not give a webpage that access under the secure-browser
+assumption. Browser vulnerabilities or sandbox escapes, malicious browser extensions, and separately installed or
+downloaded native code are also not webpage-only attacks covered by this model.
+
 ## Platform support
 
 The executable only supports Windows 11. It can be built with MinGW-w64 on Windows or cross-compiled from Linux. Linux
