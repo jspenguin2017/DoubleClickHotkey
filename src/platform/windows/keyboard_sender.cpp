@@ -4,6 +4,11 @@
 
 namespace double_click_hotkey::windows
 {
+namespace
+{
+constexpr WORD F13ScanCode = 0x64;
+} // namespace
+
 KeyboardSender::KeyboardSender(const SendInputFunction send_input) noexcept : input_injector_(send_input)
 {
 }
@@ -14,9 +19,10 @@ bool KeyboardSender::SendF13() noexcept
     for (INPUT& input : inputs)
     {
         input.type = INPUT_KEYBOARD;
-        input.ki.wVk = VK_F13;
+        input.ki.wScan = F13ScanCode;
+        input.ki.dwFlags = KEYEVENTF_SCANCODE;
     }
-    inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+    inputs[1].ki.dwFlags |= KEYEVENTF_KEYUP;
 
     return input_injector_.SendBalancedSequence(inputs.data(), static_cast<UINT>(inputs.size()));
 }
