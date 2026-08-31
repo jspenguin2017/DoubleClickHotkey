@@ -12,16 +12,20 @@ Mouse::Mouse(const SendInputFunction send_input) noexcept : input_injector_(send
 
 bool Mouse::DoubleClick() noexcept
 {
+    const bool buttons_swapped = GetSystemMetrics(SM_SWAPBUTTON) != 0;
+    const DWORD button_down_flag = buttons_swapped ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_LEFTDOWN;
+    const DWORD button_up_flag = buttons_swapped ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_LEFTUP;
+
     std::array<INPUT, 4> inputs{};
     for (INPUT& input : inputs)
     {
         input.type = INPUT_MOUSE;
     }
 
-    inputs[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-    inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
-    inputs[2].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-    inputs[3].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+    inputs[0].mi.dwFlags = button_down_flag;
+    inputs[1].mi.dwFlags = button_up_flag;
+    inputs[2].mi.dwFlags = button_down_flag;
+    inputs[3].mi.dwFlags = button_up_flag;
 
     return input_injector_.SendBalancedSequence(inputs.data(), static_cast<UINT>(inputs.size()));
 }
