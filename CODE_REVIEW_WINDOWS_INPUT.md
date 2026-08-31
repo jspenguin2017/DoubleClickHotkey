@@ -14,24 +14,6 @@
 
 ## Findings
 
-### WI-1: A pre-held F13 can trigger an unintended click or lose its release
-
-- Severity: **Low**
-- References: `src/platform/windows/keyboard_hook.cpp:54` and `src/platform/windows/keyboard_hook.cpp:112-127`.
-- Problem: Installation unconditionally initializes `hotkey_is_pressed_` to `false`, without accounting for F13 already
-  being held. If the first post-install event is an auto-repeat key-down, lines 114-118 treat that repeat as a fresh
-  press and queue a double-click. If no repeat arrives before the physical release, lines 122-127 do not queue a
-  semantic release but still return `1`, suppressing that release. Windows documents that held keys produce repeated
-  key-down messages followed by one key-up, and that a nonzero low-level-hook return prevents delivery to the target
-  window: [Keyboard Input Overview](https://learn.microsoft.com/en-us/windows/win32/inputdev/about-keyboard-input) and
-  [LowLevelKeyboardProc](https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc).
-- Impact: Starting the service while F13 is held can double-click without a new press after startup. Alternatively, an
-  application that received the pre-install key-down can be denied its matching key-up and remain latched in its own
-  F13-down state.
-- Recommendation: Detect a pre-held F13 during hook setup and enter an ignore/pass-through-until-release state so the
-  entire pre-existing press remains coherent and cannot invoke the hotkey. At minimum, pass an F13 key-up to
-  `CallNextHookEx` when `hotkey_is_pressed_` is false instead of suppressing an unmatched release.
-
 ### WI-2: The double-click does not honor a swapped primary mouse button
 
 - Severity: **Medium**
