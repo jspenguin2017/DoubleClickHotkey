@@ -36,52 +36,15 @@ the platform-independent application controller as a library so it can be built 
 
 ## Common Commands
 
-Run commands from the repository root. Node.js 24.19.0 or newer and CMake 3.28 or newer are required.
+Run commands from the repository root and prefer the npm shortcuts:
 
-- Install the locked document-formatting dependency with `npm install`.
-- Format supported documentation, configuration files, and C++ sources with `npm run format`; use `npm run format:check`
-  for a non-writing check.
-- Configure, build, and test the portable core natively on Linux:
+```sh
+npm install
+npm run build
+npm run test
+npm run format
+npm run format:check
+```
 
-  ```sh
-  cmake --preset linux-native-debug
-  cmake --build --preset linux-native-debug
-  ctest --preset linux-native-debug
-  ```
-
-- After configuring a preset on a machine with `clang-format`, format or check the C++ files with:
-
-  ```sh
-  cmake --build --preset linux-native-debug --target format
-  cmake --build --preset linux-native-debug --target format-check
-  ```
-
-  Substitute another configured build preset when appropriate. Reconfigure if `clang-format` was installed after the
-  initial configure step.
-
-- Cross-compile a debug Windows build from Linux with:
-
-  ```sh
-  cmake --preset linux-mingw-debug
-  cmake --build --preset linux-mingw-debug
-  ```
-
-  The resulting tests are Windows executables and are not run by a Linux CTest preset.
-
-- Build the distributable Windows executable from Linux with:
-
-  ```sh
-  cmake --preset linux-mingw-release
-  cmake --build --preset linux-mingw-release
-  ```
-
-- On Windows with MinGW-w64, use `windows-mingw-debug` for configure/build/test and `windows-mingw-release` for a
-  release build. For example:
-
-  ```sh
-  cmake --preset windows-mingw-debug
-  cmake --build --preset windows-mingw-debug
-  ctest --preset windows-mingw-debug
-  ```
-
-The first debug configuration downloads the pinned GoogleTest source and therefore needs network access.
+See [Build, test, and format](README.md#build-test-and-format) for requirements, platform-specific behavior, direct
+CMake commands, and build output locations.
