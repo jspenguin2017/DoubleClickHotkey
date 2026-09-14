@@ -8,7 +8,7 @@
 
 #include <chrono>
 #include <memory>
-#include <sstream>
+#include <string>
 #include <utility>
 
 namespace double_click_hotkey::windows
@@ -166,9 +166,7 @@ PlatformResult WindowsPlatformBinding::DoubleClick()
 
 std::string WindowsPlatformBinding::FormatError(const char* const message, const unsigned long error_code)
 {
-    std::ostringstream output;
-    output << message << ", error code: " << error_code;
-    return output.str();
+    return std::string(message) + ", error code: " + std::to_string(error_code);
 }
 
 std::string WindowsPlatformBinding::FormatInputInjectionError(const char* const message, const unsigned long error_code)

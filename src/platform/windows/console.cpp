@@ -3,7 +3,7 @@
 #include <conio.h>
 #include <windows.h>
 
-#include <iostream>
+#include <cstdio>
 
 namespace double_click_hotkey::windows
 {
@@ -19,12 +19,18 @@ void Console::Show() noexcept
 
 void Console::WriteLine(const std::string_view message)
 {
-    std::cout << message << std::endl;
+    if (!message.empty())
+    {
+        static_cast<void>(std::fwrite(message.data(), 1, message.size(), stdout));
+    }
+    static_cast<void>(std::fputc('\n', stdout));
+    static_cast<void>(std::fflush(stdout));
 }
 
 void Console::WaitForKey()
 {
-    std::cout << "Press any key to continue...";
+    static_cast<void>(std::fputs("Press any key to continue...", stdout));
+    static_cast<void>(std::fflush(stdout));
     static_cast<void>(_getch());
 }
 } // namespace double_click_hotkey::windows

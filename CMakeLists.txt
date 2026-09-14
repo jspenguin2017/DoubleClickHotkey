@@ -78,6 +78,34 @@ if(DOUBLE_CLICK_HOTKEY_BUILD_APP)
 
     if(MINGW)
         target_link_options(double_click_hotkey PRIVATE -static -static-libgcc -static-libstdc++)
+
+        include(CheckIPOSupported)
+        check_ipo_supported(RESULT DOUBLE_CLICK_HOTKEY_IPO_SUPPORTED OUTPUT DOUBLE_CLICK_HOTKEY_IPO_ERROR LANGUAGES CXX)
+        if(NOT DOUBLE_CLICK_HOTKEY_IPO_SUPPORTED)
+            message(WARNING "Release link-time optimization is unavailable: ${DOUBLE_CLICK_HOTKEY_IPO_ERROR}")
+        endif()
+
+        # Optimize every application layer for size; keep debugging configurations intact.
+        foreach(target IN ITEMS double_click_hotkey_core double_click_hotkey_platform double_click_hotkey)
+            target_compile_options(
+                ${target}
+                PRIVATE
+                    "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CONFIG:Release,MinSizeRel>>:-Os;-ffunction-sections;-fdata-sections>"
+            )
+            set_target_properties(
+                ${target}
+                PROPERTIES
+                    INTERPROCEDURAL_OPTIMIZATION_RELEASE ${DOUBLE_CLICK_HOTKEY_IPO_SUPPORTED}
+                    INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL ${DOUBLE_CLICK_HOTKEY_IPO_SUPPORTED}
+            )
+        endforeach()
+
+        # LTO needs the same optimization level at link time. Strip only shipping builds,
+        # including debug information carried in by the static runtime libraries.
+        target_link_options(
+            double_click_hotkey
+            PRIVATE "$<$<CONFIG:Release,MinSizeRel>:-Os;LINKER:--gc-sections;LINKER:--strip-all>"
+        )
     endif()
 
     install(TARGETS double_click_hotkey RUNTIME DESTINATION bin)

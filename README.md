@@ -108,6 +108,38 @@ cmake --build --preset linux-native-debug --target format
 cmake --build --preset linux-native-debug --target format-check
 ```
 
+### Release size
+
+MinGW `Release` and `MinSizeRel` builds optimize the core, Windows adapter, and executable for size with `-Os`,
+function/data sections, and link-time optimization (LTO) when supported. CMake warns if LTO is unavailable. The linker
+removes unused sections and strips symbols, including debug information from static runtime libraries. `Debug` and
+`RelWithDebInfo` retain their debugging information.
+
+The application keeps static runtime linking, C++ exceptions, and RTTI. Console output uses C stdio with explicit
+flushing, and error codes use integer conversion, avoiding the C++ stream and locale machinery.
+
+A Linux x64 cross-build with MinGW-w64 GCC 13-win32 produced these measurements using the same toolchain:
+
+| Build                                       |     Bytes |
+| ------------------------------------------- | --------: |
+| Previous Release                            | 2,506,211 |
+| Previous Release with symbols stripped      | 1,019,392 |
+| Size flags, LTO, unused-code removal, strip | 1,001,472 |
+| Above plus stream-free output               |   178,688 |
+
+The final executable was 92.9% smaller and imported only Windows-provided DLLs, with ASLR/NX still enabled. These are
+reference measurements; sizes vary with the compiler and runtime libraries.
+
+For future size changes, compare Release byte counts with the same toolchain and inspect DLL imports and security flags.
+No `libgcc`, `libstdc++`, or `libwinpthread` DLL should be required:
+
+```sh
+x86_64-w64-mingw32-objdump -p build/linux-mingw-release/DoubleClickHotkey.exe
+```
+
+On Windows, use the toolchain's `objdump` and the `windows-mingw-release` path. Cross-compilation and binary inspection
+do not replace a Windows smoke test of F13 handling, console output, and the launch commands.
+
 ## Run at startup
 
 Copy `DoubleClickHotkey.exe` to `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup` to start it when signing in.

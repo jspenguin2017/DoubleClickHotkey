@@ -18,7 +18,7 @@ the platform-independent application controller as a library so it can be built 
 - `tests/application/` verifies launch parsing and orchestration through a fake binding; `tests/CMakeLists.txt` defines
   the test executable.
 - `CMakeLists.txt` defines the core library, the CMake-selected platform adapter, optional application, GoogleTest
-  dependency, warnings, and C++ formatting targets.
+  dependency, warnings, MinGW release size optimizations, and C++ formatting targets.
 - `CMakePresets.json` contains native Linux, Linux-to-Windows MinGW-w64, and Windows MinGW-w64 configure/build/test
   presets. Build output goes under `build/<preset>`.
 - `cmake/ClangFormat.cmake` defines `format` and `format-check` when `clang-format` is available.
@@ -33,6 +33,9 @@ the platform-independent application controller as a library so it can be built 
   and Windows.
 - Test platform-independent behavior through portable interfaces and fakes. Do not add unit tests that depend directly
   on Win32 APIs, Windows headers, or platform-specific test gating.
+- For size-affecting changes, follow [release size guidance](README.md#release-size): compare same-toolchain Release
+  byte counts and inspect DLL imports and ASLR/NX. Preserve static runtime linking and debugging information in `Debug`
+  and `RelWithDebInfo` builds.
 
 ## Common Commands
 
