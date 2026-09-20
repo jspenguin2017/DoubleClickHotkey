@@ -28,7 +28,5 @@ Double Click Hotkey is a C++17 Windows 11 x64 tray utility with a portable core 
   dependencies, or resources). Follow [release validation](docs/release.md#validation): measure Release before and after
   with the same toolchain and configuration, report byte counts and percentage change, investigate unexpected growth,
   and fix regressions or explain necessary increases. Inspect DLL imports and ASLR/NX as part of the check.
-- Manually check affected Windows behavior: F13 handling, tray/duplicate activation, log scrolling, DPI, countdowns, and
-  shutdown. Report unavailable checks as pending; cross-compilation does not validate runtime behavior.
 - Prefer `npm run build`, `npm run test`, and `npm run format:check`; apply formatting with `npm run format`. See
   [development](docs/development.md) for prerequisites, direct CMake commands, and the repository layout.

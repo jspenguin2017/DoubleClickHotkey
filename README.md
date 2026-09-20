@@ -11,7 +11,7 @@ consumes F13 events and allows one instance per interactive Windows session. It 
 - The read-only log keeps the newest 500 lines. Select text to copy it, or use <kbd>Ctrl</kbd>+<kbd>A</kbd> to select
   all.
 - To configure F13 in another program, choose a delay in seconds, click **Send F13**, and focus that program before the
-  countdown ends. The delay starts at five seconds on each launch.
+  countdown ends.
 - Closing the window hides it. Choose **Quit** from the tray menu to exit.
 
 There are no command-line options. See [usage details](docs/usage.md) for countdowns, recovery, and elevation limits.
@@ -35,6 +35,5 @@ npm run format:check
 `build` creates Debug and Release Windows executables at `build/<preset>/DoubleClickHotkey.exe`, cross-compiling on
 Linux. `test` runs portable tests on the current host. Formatting uses Prettier and clang-format.
 
-See [development](docs/development.md) for direct CMake commands and the repository layout,
-[release size and validation](docs/release.md) for binary checks, and [AGENTS.md](AGENTS.md) for contribution
-constraints.
+See [development](docs/development.md) for direct CMake commands and the repository layout and
+[release size and validation](docs/release.md) for binary checks.
