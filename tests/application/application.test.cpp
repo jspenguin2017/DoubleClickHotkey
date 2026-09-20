@@ -1,6 +1,8 @@
 #include "double_click_hotkey/application.hpp"
 #include "fake_platform_binding.hpp"
+
 #include <gtest/gtest.h>
+
 #include <stdexcept>
 
 namespace double_click_hotkey

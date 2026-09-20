@@ -1,5 +1,6 @@
 #include "application/fake_platform_binding.hpp"
 #include "double_click_hotkey/platform_factory.hpp"
+
 #include <gtest/gtest.h>
 
 int DoubleClickHotkeyMain();

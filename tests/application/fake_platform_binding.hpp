@@ -1,4 +1,5 @@
 #pragma once
+
 #include "double_click_hotkey/platform_binding.hpp"
 
 #include <utility>
