@@ -76,3 +76,11 @@ sizes plus version/manifest resources, and retains ASLR/NX. Debug and RelWithDeb
 `.debug_abbrev`, and `.debug_line` sections. The build, 29 portable tests, and formatting checks pass. Native Windows
 desktop checks remain pending on a Linux build host; cross-compilation does not verify tray interaction, foreground
 activation, DPI, log selection/scrolling, or F13 delivery to another application.
+
+## Icon resolution reduction
+
+Keeping only the PNG-compressed 256×256 icon reduced the ICO from 13,148 to 5,902 bytes (55.11%). With MinGW-w64 GCC
+13-win32 and the same `linux-mingw-release` preset, the Release executable decreased from 240,640 to 232,960 bytes
+(7,680 bytes, 3.19%). The executable embeds one icon image and retains its version resource, Per-Monitor V2 manifest,
+Windows GUI subsystem, Windows-only DLL imports, and ASLR/NX. Debug and Release builds and all 29 portable tests pass;
+visual checks of the scaled tray and window icons remain pending on Windows.

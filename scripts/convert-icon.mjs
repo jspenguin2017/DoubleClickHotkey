@@ -5,8 +5,8 @@ import svgToIco from "svg-to-ico";
 const input = fileURLToPath(new URL("../assets/icon.svg", import.meta.url));
 const output = fileURLToPath(new URL("../assets/icon.ico", import.meta.url));
 
-// Embed native tray/window sizes as well as the Explorer icon; every image is PNG-compressed.
-const sizes = [16, 20, 24, 32, 40, 48, 64, 256];
+// svg-to-ico embeds PNG-compressed images; keep only the largest size.
+const sizes = [256];
 
 try {
   await svgToIco({ input_name: input, output_name: output, sizes });

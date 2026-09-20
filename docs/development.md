@@ -72,8 +72,9 @@ clang-format before configuration. Prettier formats documentation and configurat
 ## Icon and native resources
 
 `assets/icon.svg` is the original editable artwork. After editing it, run `npm run icon:convert` to regenerate the
-checked-in `assets/icon.ico` at 16, 20, 24, 32, 40, 48, 64, and 256 pixels. The converter is a development dependency;
-application builds use the checked-in ICO and require no Node.js runtime or image conversion.
+checked-in `assets/icon.ico` with a single PNG-compressed 256×256 image to reduce resource size. Windows scales it for
+smaller tray and window icons. The converter is a development dependency; application builds use the checked-in ICO and
+require no Node.js runtime or image conversion.
 
 The Windows resource embeds the icon, version information, and an as-invoker Per-Monitor V2 manifest. CMake explicitly
 tracks these inputs so resource edits trigger incremental rebuilds. The executable uses the Windows GUI subsystem, while
