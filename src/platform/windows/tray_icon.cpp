@@ -80,6 +80,9 @@ std::optional<EventKind> TrayIcon::Handle(const LPARAM lparam)
         {
             return EventKind::quit;
         }
+        // WM_NULL completes menu dismissal; cancellation also needs to return focus to the notification area.
+        if (choice == 0 && added_)
+            Shell_NotifyIconW(NIM_SETFOCUS, &data_);
     }
     return std::nullopt;
 }

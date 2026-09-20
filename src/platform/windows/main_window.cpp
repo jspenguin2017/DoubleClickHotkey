@@ -299,6 +299,10 @@ void MainWindow::Present(const ViewState& state)
         const auto caption = ToWide(state.send_caption);
         if (ReadText(send_) != caption)
             SetWindowTextW(send_, caption.c_str());
+        // Disabling a focused control clears keyboard focus; keep it in the enabled log instead.
+        const auto focus = GetFocus();
+        if ((focus == delay_ && !state.delay_enabled) || (focus == send_ && !state.send_enabled))
+            SetFocus(log_);
         EnableWindow(delay_, state.delay_enabled);
         EnableWindow(send_, state.send_enabled);
         presenting_ = false;

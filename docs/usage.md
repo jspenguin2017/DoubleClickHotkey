@@ -9,6 +9,8 @@ The application starts hidden without opening a console. Click the tray icon or 
 administrator elevation levels within the same interactive session. Windows may still restrict foreground activation.
 Duplicate launches wait up to two seconds for startup to finish before reporting a failure.
 
+Canceling the tray menu with **Escape** returns keyboard focus to the notification area while the icon is available.
+
 The window can be resized and scales with display DPI. The app restores its tray icon after Explorer restarts. If the
 icon cannot be created or restored, it shows the window and logs an error. **Quit Double Click Hotkey** in the window's
 system menu remains available; closing the window while the tray is unavailable keeps it visible.
@@ -41,8 +43,9 @@ handling.
 is five seconds on each launch, and edits last until the app quits.
 
 Click **Send F13**, then focus the target program. The delay field and button are disabled during the countdown; the
-button shows the remaining seconds. Sending logs its completion or error and re-enables the controls without moving
-focus. Only one send can be pending.
+button shows the remaining seconds. If either control has keyboard focus when disabled, focus moves to the log so
+keyboard navigation and copying remain available. Sending logs its completion or error and re-enables the controls
+without moving focus. Only one send can be pending.
 
 Closing or hiding the window leaves the countdown running. Sleep and hibernation count toward the delay; an overdue send
 occurs after resume. Changes to the system clock do not alter the delay. The UI handles the countdown and sends F13, so

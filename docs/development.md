@@ -120,6 +120,23 @@ not validate native scheduling or actual input delivery. On a Windows 11 desktop
    must not be replayed during teardown, input releases must finish, and worker handles must be joined before the HWND
    is destroyed. Repeated launch/quit cycles must not leave hooks or worker threads behind.
 
+## Windows focus validation
+
+Focus behavior requires an interactive Windows 11 desktop; portable tests do not exercise native controls or the shell.
+
+1. Start a countdown by clicking **Send F13**, then repeat by tabbing to it and using **Enter** or **Space**. Without
+   switching windows, check that focus moves to the log and **Ctrl+A** and copying work during and after the countdown.
+   After completion, **Tab** and **Shift+Tab** must reach the re-enabled delay field and button.
+2. In a debugger, trigger a send request while the delay field has focus; focus must move to the log before the field is
+   disabled. Repeat with the log focused; it must retain focus. Editing the delay to an invalid value must keep focus in
+   that field while disabling only the button.
+3. Start another countdown, switch to another application, and wait for completion. That application must retain focus.
+   Repeat after hiding the hotkey window; completion must neither show nor activate it.
+4. Navigate to the tray icon with the keyboard, open its menu, and press **Escape**. Arrow keys must continue navigating
+   notification icons. Repeat with the application window shown and hidden, and confirm the menu can be reopened.
+   **Show** must still focus the application window, and **Quit** must still exit. If the tray icon is removed while the
+   menu is open (for example, during shutdown), dismissal must not request focus for the removed icon.
+
 ## Icon and native resources
 
 `assets/icon.svg` is the original editable artwork. After editing it, run `npm run icon:convert` to regenerate the

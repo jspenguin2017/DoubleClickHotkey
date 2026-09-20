@@ -52,6 +52,7 @@ uses its own baseline; these are reference measurements, not limits across toolc
 | Native tray application                 |        178,688 |       241,152 | +34.96% |
 | Single PNG-compressed 256×256 icon      |        240,640 |       232,960 |  −3.19% |
 | Dedicated hook and double-click threads |        232,960 |       236,544 |  +1.54% |
+| Countdown and tray menu focus fixes     |        236,544 |       236,544 |   0.00% |
 
 The tray increase added the native window/tray, Unicode log, bounded log buffer, and nonblocking countdown. Recorded
 builds retained Windows-only DLL imports and ASLR/NX; native Windows desktop and scaled-icon checks remain pending.
@@ -61,3 +62,8 @@ The thread split adds 3,584 bytes for worker startup, message pumps, cancellatio
 existing Windows-only DLL import set, GUI subsystem, ASLR/NX, and identical icon/version/manifest resource bytes. Debug
 information is present in the Debug executable. Both Windows build presets, all 51 portable tests, and formatting checks
 passed; native Windows thread/input scenarios remain pending on the Linux validation host.
+
+The focus fixes leave the Release executable size unchanged. The same-toolchain comparison retained Windows-only DLL
+imports, the GUI subsystem, ASLR/NX, and identical icon/version/manifest resource bytes. Both Windows build presets and
+all 51 portable tests passed; the [Windows focus scenarios](development.md#windows-focus-validation) remain pending on
+the Linux validation host.

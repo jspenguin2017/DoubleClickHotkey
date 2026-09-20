@@ -9,10 +9,15 @@
 - Findings and unresolved questions rechecked against commit `7c275c98bff93fad771e53db6b8f88d9d6b374a4`.
 - Reviewed startup/teardown, native callback exception containment, timer integration, tray recovery, control
   presentation, keyboard navigation, log selection/scroll restoration, DPI changes, visibility, and session shutdown.
+- Findings below retain the original review details; resolution notes describe the subsequent fixes.
 
 ## Findings
 
 ### 1. Preserve keyboard focus before disabling the Send control
+
+**Resolution:** Fixed in `MainWindow::Present`: move focus to the enabled log before disabling a focused delay/send
+control. Presentations that re-enable controls do not move focus. Interactive checks are documented under
+[Windows focus validation](docs/development.md#windows-focus-validation) and remain pending on Windows.
 
 **Severity:** Medium
 
@@ -40,6 +45,10 @@ against the documented Win32 behavior. This is a static/API-contract finding; an
 not available.
 
 ### 2. Return focus to the notification area when its menu is canceled
+
+**Resolution:** Fixed in `TrayIcon::Handle`: call `Shell_NotifyIconW(NIM_SETFOCUS, ...)` when the menu returns no
+command and the tray icon is still available. Show and Quit retain their existing paths. Interactive checks are
+documented under [Windows focus validation](docs/development.md#windows-focus-validation) and remain pending on Windows.
 
 **Severity:** Low
 
@@ -78,4 +87,4 @@ None exists. Interactive Windows verification remains pending.
 - Windows execution is unavailable. DPI/multiple-monitor behavior, assistive technology, log-control interaction,
   Explorer restart, native modal loops, and session-end timing were not tested interactively. Passing portable tests
   does not validate these behaviors.
-- No production code, tests, configuration, or resources were edited.
+- No production code, tests, configuration, or resources were edited during the original review.
