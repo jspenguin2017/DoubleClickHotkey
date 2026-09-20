@@ -6,6 +6,7 @@
   `native.*`, `platform_factory.cpp`, and the native manifest and resource integration, with the controller and usage
   documentation as related contracts.
 - Basis: commit `c502829e0f39009868ec79818186779d42e6bb6b`; initially clean worktree.
+- Findings and unresolved questions rechecked against commit `7c275c98bff93fad771e53db6b8f88d9d6b374a4`.
 - Reviewed startup/teardown, native callback exception containment, timer integration, tray recovery, control
   presentation, keyboard navigation, log selection/scroll restoration, DPI changes, visibility, and session shutdown.
 
@@ -15,8 +16,8 @@
 
 **Severity:** Medium
 
-**Location:** `src/platform/windows/main_window.cpp:297-298`. Related paths: `src/application/application.cpp:133-138`
-and `src/platform/windows/main_window.cpp:308-323,427-434`.
+**Location:** `src/platform/windows/main_window.cpp:302-303`. Related paths: `src/application/application.cpp:133-138`
+and `src/platform/windows/main_window.cpp:313-329,436-445`.
 
 **Problem:** Starting a countdown disables both controls without moving focus away from the focused control. In the
 normal click or keyboard activation path, Send F13 has focus when `EnableWindow(send_, false)` runs. Windows clears
@@ -66,7 +67,7 @@ None exists. Interactive Windows verification remains pending.
   permits `TaskbarCreated`; this host cannot validate the shell's delivery of the regular tray callback across integrity
   levels. This is not reported as a verified elevation defect.
 
-## Checks and limitations
+## Original review checks and limitations
 
 - Traced teardown through immediate quit, native callback failure, startup failure, and normal event-loop exit. Checked
   callback detachment and resource ownership order.
