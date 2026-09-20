@@ -72,7 +72,9 @@ TEST(HotkeyPolicyTest, OwnInjectedInputDoesNotReleaseAPhysicalHold)
     HotkeyPolicy policy;
     ExpectDecision(policy, Press, true, true);
     ExpectDecision(policy, OwnPress, false, false);
+    ExpectDecision(policy, Press, true, false);
     ExpectDecision(policy, OwnRelease, false, false);
+    ExpectDecision(policy, Press, true, false);
     ExpectDecision(policy, OwnRelease, false, false);
     ExpectDecision(policy, Press, true, false);
     ExpectDecision(policy, Release, true, false);
@@ -83,6 +85,7 @@ TEST(HotkeyPolicyTest, OwnInjectedInputDoesNotEndStartupPassthrough)
 {
     HotkeyPolicy policy(true);
     ExpectDecision(policy, OwnPress, false, false);
+    ExpectDecision(policy, Press, false, false);
     ExpectDecision(policy, OwnRelease, false, false);
     ExpectDecision(policy, Press, false, false);
     ExpectDecision(policy, Release, false, false);

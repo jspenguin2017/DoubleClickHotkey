@@ -9,6 +9,25 @@ namespace double_click_hotkey
 {
 using namespace std::chrono_literals;
 
+namespace
+{
+void EmitFailingEvent(FakePlatformBinding& platform, const EventKind kind)
+{
+    try
+    {
+        platform.Emit(kind);
+    }
+    catch (...)
+    {
+        // Check before RunService emits quit: adapter cleanup must not mask a controller failure to stop.
+        EXPECT_EQ(platform.exit_count, 1);
+        EXPECT_EQ(platform.timer, std::nullopt);
+        throw;
+    }
+    ADD_FAILURE() << "Expected event handling to propagate the platform exception";
+}
+} // namespace
+
 TEST(DelayTest, AcceptsWholeSecondsInRange)
 {
     EXPECT_EQ(ParseDelay("1"), 1s);
@@ -89,7 +108,7 @@ TEST(ApplicationTest, ReportsFailureAfterInitializationAndStops)
 TEST(ApplicationTest, PresentationFailureCancelsCountdownAndReportsTheError)
 {
     FakePlatformBinding p;
-    p.run_action = [](auto& f) { f.Emit(EventKind::send_requested); };
+    p.run_action = [](auto& f) { EmitFailingEvent(f, EventKind::send_requested); };
     p.on_present = [](auto& f) {
         if (!f.view.delay_enabled)
             throw std::runtime_error("Presentation failed");
@@ -136,7 +155,7 @@ TEST(ApplicationTest, UnknownServiceExceptionsRequestExitAndReportAFallbackError
 TEST(ApplicationTest, UnknownPresentationFailureCancelsCountdownAndReportsAFallbackError)
 {
     FakePlatformBinding p;
-    p.run_action = [](auto& f) { f.Emit(EventKind::send_requested); };
+    p.run_action = [](auto& f) { EmitFailingEvent(f, EventKind::send_requested); };
     p.on_present = [](auto& f) {
         if (!f.view.delay_enabled)
             throw 42;
@@ -188,6 +207,27 @@ TEST(ApplicationTest, LogsErrorsWhileHiddenAndRetainsOnlyNewestLines)
         expected += std::to_string(index);
     }
     EXPECT_EQ(p.view.log_text, expected);
+}
+TEST(ApplicationTest, MultilineAndEmptyDiagnosticsEachAdvanceTheLogRevisionOnce)
+{
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) {
+        f.Emit(EventKind::diagnostic, "First\r\nSecond\n");
+        EXPECT_EQ(f.view.log_text, "First\nSecond\n");
+        EXPECT_EQ(f.view.log_revision, 1U);
+        f.Emit(EventKind::diagnostic, "");
+        EXPECT_EQ(f.view.log_text, "First\nSecond\n\n");
+        EXPECT_EQ(f.view.log_revision, 2U);
+        f.Emit(EventKind::show);
+        f.Emit(EventKind::hide);
+        f.Emit(EventKind::delay_changed, "2");
+        f.Emit(EventKind::tick);
+        EXPECT_EQ(f.view.log_text, "First\nSecond\n\n");
+        EXPECT_EQ(f.view.log_revision, 2U);
+        EXPECT_EQ(f.view.removed_lines, 0U);
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
 }
 TEST(ApplicationTest, InvalidDelayDisablesSendingAndCanBeCorrected)
 {
@@ -399,6 +439,28 @@ TEST(ApplicationTest, TimerRearmFailureCancelsThePendingSend)
     Application app(p);
     EXPECT_EQ(app.Run(), 0);
 }
+TEST(ApplicationTest, TimerExceptionStopsBeforePresentingTheCountdown)
+{
+    class ThrowingTimer : public FakePlatformBinding
+    {
+      public:
+        PlatformResult ScheduleTick(std::optional<ElapsedTime> deadline) override
+        {
+            (void)FakePlatformBinding::ScheduleTick(deadline);
+            throw std::runtime_error("Timer scheduling failed");
+        }
+    } p;
+    p.run_action = [](auto& f) { EmitFailingEvent(f, EventKind::send_requested); };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 1);
+    EXPECT_EQ(p.errors, std::vector<std::string>{"Timer scheduling failed"});
+    EXPECT_EQ(p.scheduled, (std::vector<std::optional<ElapsedTime>>{1s}));
+    EXPECT_EQ(p.send_count, 0);
+    EXPECT_EQ(p.exit_count, 1);
+    EXPECT_EQ(p.present_count, 1);
+    EXPECT_EQ(p.view.log_text, "");
+    EXPECT_EQ(p.view.send_caption, "Send F13");
+}
 TEST(ApplicationTest, InjectionFailureIsLoggedAndAllowsAnotherAttempt)
 {
     FakePlatformBinding p;
@@ -483,7 +545,7 @@ TEST(ApplicationTest, WorkerFailureCancelsCountdownAndReportsTheError)
     FakePlatformBinding p;
     p.run_action = [](auto& f) {
         f.Emit(EventKind::send_requested);
-        ASSERT_TRUE(f.timer);
+        ASSERT_EQ(f.timer, 1s);
         f.service_result = {false, "Keyboard hook thread exited unexpectedly"};
     };
     Application app(p);
@@ -545,6 +607,83 @@ TEST(ApplicationTest, ReentrantInputEventsDoNotRepeatTheScheduledSend)
     };
     Application app(p);
     EXPECT_EQ(app.Run(), 0);
+}
+TEST(ApplicationTest, ReentrantSendRequestStartsANewCountdownAfterTheCompletedSend)
+{
+    class ReentrantSender : public FakePlatformBinding
+    {
+      public:
+        PlatformResult SendF13() override
+        {
+            const auto result = FakePlatformBinding::SendF13();
+            if (send_count == 1)
+            {
+                Emit(EventKind::delay_changed, "1");
+                Emit(EventKind::send_requested);
+                EXPECT_EQ(view.delay_text, "5");
+                EXPECT_EQ(timer, std::nullopt);
+            }
+            return result;
+        }
+    } p;
+    p.run_action = [](auto& f) {
+        f.Emit(EventKind::send_requested);
+        f.now = 5s;
+        f.Emit(EventKind::tick);
+        EXPECT_EQ(f.send_count, 1);
+        EXPECT_EQ(f.view.delay_text, "1");
+        EXPECT_EQ(f.view.send_caption, "Sending in 1 s");
+        EXPECT_FALSE(f.view.delay_enabled);
+        EXPECT_FALSE(f.view.send_enabled);
+        EXPECT_EQ(f.timer, 6s);
+        EXPECT_EQ(f.view.log_text, "F13 will be sent in 5 seconds. Focus the target application now.\nF13 sent.\n"
+                                   "F13 will be sent in 1 seconds. Focus the target application now.");
+        f.now = 5999ms;
+        f.Emit(EventKind::tick);
+        EXPECT_EQ(f.send_count, 1);
+        f.now = 6s;
+        f.Emit(EventKind::tick);
+        EXPECT_EQ(f.send_count, 2);
+        EXPECT_EQ(f.timer, std::nullopt);
+        EXPECT_EQ(f.view.send_caption, "Send F13");
+        EXPECT_TRUE(f.view.delay_enabled);
+        EXPECT_TRUE(f.view.send_enabled);
+        EXPECT_EQ(f.view.log_text, "F13 will be sent in 5 seconds. Focus the target application now.\nF13 sent.\n"
+                                   "F13 will be sent in 1 seconds. Focus the target application now.\nF13 sent.");
+        EXPECT_EQ(f.view.log_revision, 4U);
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+}
+TEST(ApplicationTest, InputExceptionStopsAndDiscardsReentrantEvents)
+{
+    class ThrowingSender : public FakePlatformBinding
+    {
+      public:
+        PlatformResult SendF13() override
+        {
+            (void)FakePlatformBinding::SendF13();
+            Emit(EventKind::show);
+            Emit(EventKind::diagnostic, "Queued diagnostic");
+            Emit(EventKind::send_requested);
+            throw std::runtime_error("Input failed");
+        }
+    } p;
+    p.run_action = [](auto& f) {
+        f.Emit(EventKind::send_requested);
+        f.now = 5s;
+        EmitFailingEvent(f, EventKind::tick);
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 1);
+    EXPECT_EQ(p.errors, std::vector<std::string>{"Input failed"});
+    EXPECT_EQ(p.exit_count, 1);
+    EXPECT_EQ(p.send_count, 1);
+    EXPECT_EQ(p.scheduled, (std::vector<std::optional<ElapsedTime>>{1s, std::nullopt}));
+    EXPECT_EQ(p.visibility, std::vector<bool>{false});
+    EXPECT_EQ(p.present_count, 2);
+    EXPECT_EQ(p.view.log_text, "F13 will be sent in 5 seconds. Focus the target application now.");
+    EXPECT_EQ(p.view.log_revision, 1U);
 }
 TEST(ApplicationTest, ReentrantQuitCancelsImmediately)
 {
