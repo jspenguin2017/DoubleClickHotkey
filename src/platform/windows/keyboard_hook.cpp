@@ -1,6 +1,7 @@
 #include "platform/windows/keyboard_hook.hpp"
 
 #include "platform/windows/input_tag.hpp"
+#include "platform/windows/input_threads.hpp"
 
 namespace double_click_hotkey::windows
 {
@@ -19,7 +20,7 @@ KeyboardHook::~KeyboardHook()
     }
 }
 
-bool KeyboardHook::Install(HWND receiver)
+bool KeyboardHook::Install(InputThreads& receiver)
 {
     if (handle_ != nullptr || active_hook_ != nullptr)
     {
@@ -37,7 +38,8 @@ bool KeyboardHook::Install(HWND receiver)
     MSG message{};
     static_cast<void>(PeekMessageW(&message, nullptr, WM_USER, WM_USER, PM_NOREMOVE));
 
-    receiver_ = receiver;
+    policy_ = HotkeyPolicy(GetAsyncKeyState(VK_F13) < 0);
+    receiver_ = &receiver;
     active_hook_ = this;
     handle_ = SetWindowsHookExW(WH_KEYBOARD_LL, &HandleKeyboardEvent, executable_module, 0);
     if (handle_ == nullptr)
@@ -49,15 +51,7 @@ bool KeyboardHook::Install(HWND receiver)
     }
 
     last_error_code_ = ERROR_SUCCESS;
-    hotkey_is_pressed_ = false;
-    pass_hotkey_through_until_release_ = GetAsyncKeyState(VK_F13) < 0;
-    event_queue_failed_ = false;
     return true;
-}
-
-bool KeyboardHook::EventQueueFailed() const noexcept
-{
-    return event_queue_failed_;
 }
 
 DWORD KeyboardHook::LastErrorCode() const noexcept
@@ -65,7 +59,7 @@ DWORD KeyboardHook::LastErrorCode() const noexcept
     return last_error_code_;
 }
 
-LRESULT CALLBACK KeyboardHook::HandleKeyboardEvent(const int code, const WPARAM message, const LPARAM data)
+LRESULT CALLBACK KeyboardHook::HandleKeyboardEvent(const int code, const WPARAM message, const LPARAM data) noexcept
 {
     if (active_hook_ == nullptr)
     {
@@ -75,7 +69,7 @@ LRESULT CALLBACK KeyboardHook::HandleKeyboardEvent(const int code, const WPARAM 
     return active_hook_->DispatchKeyboardEvent(code, message, data);
 }
 
-LRESULT KeyboardHook::DispatchKeyboardEvent(const int code, const WPARAM message, const LPARAM data)
+LRESULT KeyboardHook::DispatchKeyboardEvent(const int code, const WPARAM message, const LPARAM data) noexcept
 {
     if (code < 0)
     {
@@ -95,47 +89,11 @@ LRESULT KeyboardHook::DispatchKeyboardEvent(const int code, const WPARAM message
         return CallNextHookEx(handle_, code, message, data);
     }
 
-    // Our setup keystroke must reach the foreground app without changing physical-key tracking.
-    if ((keyboard_event->flags & LLKHF_INJECTED) != 0 && keyboard_event->dwExtraInfo == F13InputTag())
-    {
-        return CallNextHookEx(handle_, code, message, data);
-    }
-
-    if (pass_hotkey_through_until_release_)
-    {
-        if (is_key_up)
-        {
-            pass_hotkey_through_until_release_ = false;
-        }
-        return CallNextHookEx(handle_, code, message, data);
-    }
-
-    if (is_key_down)
-    {
-        if (!hotkey_is_pressed_)
-        {
-            hotkey_is_pressed_ = true;
-            QueueEvent(KeyTransition::pressed);
-        }
-        return 1;
-    }
-
-    if (hotkey_is_pressed_)
-    {
-        hotkey_is_pressed_ = false;
-        QueueEvent(KeyTransition::released);
-        return 1;
-    }
-
-    return CallNextHookEx(handle_, code, message, data);
-}
-
-void KeyboardHook::QueueEvent(const KeyTransition transition) noexcept
-{
-    if (PostMessageW(receiver_, HotkeyEventMessage, static_cast<WPARAM>(transition), 0) == 0)
-    {
-        last_error_code_ = GetLastError();
-        event_queue_failed_ = true;
-    }
+    const auto decision =
+        policy_.Handle({is_key_down ? KeyTransition::pressed : KeyTransition::released,
+                        (keyboard_event->flags & LLKHF_INJECTED) != 0, keyboard_event->dwExtraInfo == F13InputTag()});
+    if (decision.double_click)
+        receiver_->QueueDoubleClick();
+    return decision.suppress ? 1 : CallNextHookEx(handle_, code, message, data);
 }
 } // namespace double_click_hotkey::windows

@@ -60,7 +60,8 @@ clang-format before configuration. Prettier formats documentation and configurat
 ## Repository layout
 
 - `src/main.cpp` creates the CMake-selected platform binding and runs the controller. Public contracts are in
-  `include/double_click_hotkey/`; portable log retention, countdown state, and orchestration live in `src/application/`.
+  `include/double_click_hotkey/`; portable log retention, countdown state, hotkey policy, and orchestration live in
+  `src/application/`.
 - `src/platform/windows/` implements the native window, tray, DPI handling, Show-only instance activation, keyboard
   hooks and sending, mouse input, and the monotonic clock.
 - `tests/application/` tests the core through the shared `fake_platform_binding.hpp`, without real sleeps or desktop
@@ -68,6 +69,56 @@ clang-format before configuration. Prettier formats documentation and configurat
   under a test-only function name.
 - `CMakeLists.txt` defines targets, GoogleTest, warnings, and size flags; `cmake/` holds formatting and toolchain setup.
   `package.json`, `scripts/cmake.mjs`, and `.prettier*` configure npm workflows and documentation formatting.
+
+## Thread ownership
+
+The Windows adapter owns three application threads at normal priority:
+
+| Thread        | Owns                                                                   | Handoff                                                                   |
+| ------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Main/UI       | Application controller, window, tray, countdown, logs, keyboard sender | Receives double-click diagnostics and worker failures                     |
+| Keyboard hook | Hook installation, message pump, portable `HotkeyPolicy`, unhooking    | Posts one double-click request per F13 press directly to the input thread |
+| Input         | Mouse sender and compensating mouse-button releases                    | Posts numeric error data to the UI window; successful clicks are silent   |
+
+`InputThreads` uses `_beginthreadex` and owned Windows events/handles, retaining compatibility with the MinGW win32
+thread model. It creates the input message queue before signaling readiness, then starts and installs the hook on its
+own thread. Instance readiness is published after both workers and the initial UI presentation are ready.
+
+The hook callback never allocates, formats text, waits for either thread, sends input, or invokes an application
+callback. It hands work off with `PostThreadMessageW`, following
+[Microsoft's low-level hook guidance](https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc). Only
+the hook thread touches its key state. Windows message queues provide FIFO delivery; a failed post is a fatal service
+error, not a retry inside the callback. Worker failures publish an atomic error and signal a separate event in the main
+wait loop, with an additional window message for native modal loops. Cross-thread messages contain no owning pointers.
+Input failure text is formatted and logged on the UI thread.
+
+The UI still sends F13 synchronously. Both generated transitions, including any compensating release after a partial
+send, carry the same immutable process-local tag. `HotkeyPolicy` passes matching injected input through before changing
+any physical-key state. No shared suppression flag or temporary unhooking is used, so physical holds and startup
+passthrough survive interleaved setup keystrokes. Keyboard and mouse injection have separate error state.
+
+Quit immediately cancels the countdown and signals input cancellation. Queued clicks are discarded; a sequence already
+in progress may finish its compensating release. After UI callbacks unwind, cleanup detaches callbacks, joins the input
+thread while the hook still pumps, then stops and joins the hook thread before destroying the window. The instance lock
+is retained until cleanup finishes. Partial startup failures use the same teardown order.
+
+### Windows thread validation
+
+Portable tests exercise normalized hotkey decisions and controller behavior without desktop APIs or real sleeps. They do
+not validate native scheduling or actual input delivery. On a Windows 11 desktop, also check:
+
+1. Confirm the main, hook, and input thread entrypoints run on distinct threads. Suspend only the UI thread for several
+   seconds while testing F13 against another responsive application. Double-clicks must continue during the stall and
+   after the UI resumes. Repeat with tray menus, resizing, and Explorer restart.
+2. Capture **Send F13** in another application: both transitions must arrive without a double-click. Repeat while
+   physical F13 is held and when F13 was held at startup; physical auto-repeat must not produce extra clicks. Check
+   ordinary untagged injected F13 and swapped mouse buttons too.
+3. Exercise thread-creation/hook-installation failure and failed request/diagnostic posting using a debugger. The
+   service must exit with a diagnostic, unwind partial startup, and release the instance lock. A full UI queue must not
+   prevent the failure event from being observed once the UI resumes.
+4. Quit with clicks queued and during countdowns, including from a modal menu and during session shutdown. Queued clicks
+   must not be replayed during teardown, input releases must finish, and worker handles must be joined before the HWND
+   is destroyed. Repeated launch/quit cycles must not leave hooks or worker threads behind.
 
 ## Icon and native resources
 

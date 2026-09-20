@@ -24,8 +24,16 @@ lines are removed as new output arrives. Long lines scroll horizontally rather t
 when at the bottom with no selection; otherwise it preserves the selection and reading position where the retained text
 permits. Use the usual copy shortcut or **Ctrl+A** to select all.
 
-Input errors continue to be logged while hidden without showing the window. Unrecoverable startup or event-loop errors
-are reported in a dialog before exit. No log file is written; quitting clears the history.
+Input errors continue to be logged while hidden without showing the window. Double-click errors appear when the UI
+processes the worker's notification. Unrecoverable startup, worker, or event-loop errors are reported in a dialog before
+exit. No log file is written; quitting clears the history.
+
+## Double-click hotkey
+
+F13 triggers one double-click per press; holding it does not repeat clicks. A key already held when the app starts
+passes through until released. Double-click handling runs independently of UI activity, including countdowns and window
+updates. Quitting discards clicks still queued for delivery and lets a sequence already in progress finish its release
+handling.
 
 ## Sending F13
 
@@ -37,11 +45,12 @@ button shows the remaining seconds. Sending logs its completion or error and re-
 focus. Only one send can be pending.
 
 Closing or hiding the window leaves the countdown running. Sleep and hibernation count toward the delay; an overdue send
-occurs after resume. Changes to the system clock do not alter the delay. Quitting cancels a pending send.
+occurs after resume. Changes to the system clock do not alter the delay. The UI handles the countdown and sends F13, so
+a stalled UI delays this setup keystroke until it resumes. Quitting cancels a pending send.
 
-The app passes its own generated F13 press and release through its hook so another program can capture them. Other F13
-input continues to trigger one double-click per press, including during countdowns. No instance message can request F13
-injection, double-click injection, or Quit.
+The app passes its own generated F13 press and release through its hook so another program can capture them, without
+triggering a double-click or changing physical-key tracking. Other F13 input continues to trigger the hotkey, including
+during countdowns. No instance message can request F13 injection, double-click injection, or Quit.
 
 ## Elevation and security
 

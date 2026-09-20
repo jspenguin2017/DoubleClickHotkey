@@ -17,9 +17,9 @@ PlatformResult WindowsPlatformBinding::RunService(EventHandler handler)
         window_ = std::make_unique<MainWindow>(handler);
         tray_ = std::make_unique<TrayIcon>(window_->Get(), window_->SmallIcon());
         window_->SetTray(tray_.get());
-        hook_ = std::make_unique<KeyboardHook>();
-        if (!hook_->Install(window_->Get()))
-            throw std::runtime_error(NativeError("Install F13 keyboard hook", hook_->LastErrorCode()));
+        input_threads_ = std::make_unique<InputThreads>(window_->Get());
+        window_->SetInputThreads(input_threads_.get());
+        input_threads_->Start();
         const bool tray_ready = tray_->Add();
         initialized = true;
         handler({EventKind::initialized, {}});
@@ -31,12 +31,16 @@ PlatformResult WindowsPlatformBinding::RunService(EventHandler handler)
             handler({EventKind::show, {}});
         }
         instance.StartListening(); // Publish readiness only after the window, hook, and initial presentation exist.
-        const HANDLE show_event = instance.ShowEvent();
+        const auto worker_handles = input_threads_->WaitHandles();
+        const std::array<HANDLE, 4> events{worker_handles[0], worker_handles[1], worker_handles[2],
+                                           instance.ShowEvent()};
         while (!exiting_)
         {
-            const auto wait = MsgWaitForMultipleObjectsEx(1, &show_event, INFINITE, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+            const auto wait = MsgWaitForMultipleObjectsEx(static_cast<DWORD>(events.size()), events.data(), INFINITE,
+                                                          QS_ALLINPUT, MWMO_INPUTAVAILABLE);
             Require(wait != WAIT_FAILED, "Wait for application events");
-            if (wait == WAIT_OBJECT_0)
+            input_threads_->CheckFailure();
+            if (wait == WAIT_OBJECT_0 + 3)
                 handler({EventKind::show, {}});
             MSG message{};
             // Bound drains to avoid starving duplicate-instance Show requests in a busy message queue.
@@ -54,12 +58,12 @@ PlatformResult WindowsPlatformBinding::RunService(EventHandler handler)
                 }
                 if (window_->Failure())
                     std::rethrow_exception(window_->Failure());
-                if (hook_ && hook_->EventQueueFailed())
-                    throw std::runtime_error(NativeError("Queue F13 event", hook_->LastErrorCode()));
+                input_threads_->CheckFailure();
             }
         }
         if (window_->Failure())
             std::rethrow_exception(window_->Failure());
+        input_threads_->CheckFailure();
     }
     catch (const std::exception& error)
     {
@@ -100,8 +104,9 @@ void WindowsPlatformBinding::Cleanup() noexcept
         window_->ClearHandler();
         window_->CancelTimer();
         window_->SetTray(nullptr);
+        window_->SetInputThreads(nullptr);
     }
-    hook_.reset();
+    input_threads_.reset(); // Join both workers before destroying their notification HWND.
     tray_.reset();
     window_.reset();
 }
@@ -142,8 +147,9 @@ void WindowsPlatformBinding::RequestExit() noexcept
         window_->CancelTimer();
         window_->SetTray(nullptr);
     }
-    // Session-end callbacks can be followed immediately by process teardown; release native input/tray resources now.
-    hook_.reset();
+    // Cancel immediately in native callbacks; joins happen after the UI event stack has unwound.
+    if (input_threads_)
+        input_threads_->RequestStop();
     if (tray_)
         tray_->Remove();
     PostQuitMessage(0);
@@ -164,42 +170,6 @@ PlatformResult WindowsPlatformBinding::SendF13()
     }
 
     return {};
-}
-
-PlatformResult WindowsPlatformBinding::DoubleClick()
-{
-    if (!mouse_.DoubleClick())
-    {
-        std::string message = FormatInputInjectionError("Failed to send a double-click", mouse_.LastErrorCode());
-        const std::optional<DWORD> release_error_code = mouse_.LastReleaseErrorCode();
-        if (release_error_code.has_value())
-        {
-            message += "; ";
-            message += FormatInputInjectionError("failed to release the primary mouse button after the partial send",
-                                                 *release_error_code);
-        }
-        return {false, std::move(message)};
-    }
-
-    return {};
-}
-
-std::string WindowsPlatformBinding::FormatError(const char* const message, const unsigned long error_code)
-{
-    return std::string(message) + ", error code: " + std::to_string(error_code);
-}
-
-std::string WindowsPlatformBinding::FormatInputInjectionError(const char* const message, const unsigned long error_code)
-{
-    if (error_code != ERROR_SUCCESS)
-    {
-        return FormatError(message, error_code);
-    }
-
-    return std::string(message) +
-           ": Windows blocked or otherwise rejected the input without reporting an error code. An integrity-level "
-           "mismatch is one possible cause; if the target application is elevated, run Double Click Hotkey at the "
-           "same or a higher integrity level.";
 }
 
 } // namespace double_click_hotkey::windows

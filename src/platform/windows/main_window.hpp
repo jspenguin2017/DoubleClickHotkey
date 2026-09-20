@@ -7,6 +7,8 @@
 
 namespace double_click_hotkey::windows
 {
+class InputThreads;
+
 class MainWindow
 {
   public:
@@ -15,6 +17,7 @@ class MainWindow
     HWND Get() const noexcept;
     HICON SmallIcon() const noexcept;
     void SetTray(TrayIcon* tray) noexcept;
+    void SetInputThreads(InputThreads* input_threads) noexcept;
     void ClearHandler() noexcept;
     void CancelTimer() noexcept;
     void SetVisible(bool visible);
@@ -43,6 +46,7 @@ class MainWindow
     HWND last_focus_ = nullptr;
     EventHandler handler_;
     TrayIcon* tray_ = nullptr;
+    InputThreads* input_threads_ = nullptr;
     std::optional<ElapsedTime> timer_deadline_;
     std::exception_ptr failure_;
     std::wstring log_text_;

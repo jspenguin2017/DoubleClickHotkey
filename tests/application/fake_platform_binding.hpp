@@ -76,16 +76,11 @@ class FakePlatformBinding : public PlatformBinding
         ++send_count;
         return send_result;
     }
-    PlatformResult DoubleClick() override
-    {
-        ++click_count;
-        return click_result;
-    }
 
     EventHandler handler_;
     std::function<void(FakePlatformBinding&)> run_action;
     std::function<void(FakePlatformBinding&)> on_present;
-    PlatformResult service_result, timer_result, send_result, click_result;
+    PlatformResult service_result, timer_result, send_result;
     ElapsedTime now{0};
     std::optional<ElapsedTime> timer;
     std::vector<std::optional<ElapsedTime>> scheduled;
@@ -93,6 +88,6 @@ class FakePlatformBinding : public PlatformBinding
     std::vector<bool> visibility;
     std::vector<std::string> errors;
     bool duplicate = false;
-    int run_count = 0, present_count = 0, exit_count = 0, send_count = 0, click_count = 0;
+    int run_count = 0, present_count = 0, exit_count = 0, send_count = 0;
 };
 } // namespace double_click_hotkey

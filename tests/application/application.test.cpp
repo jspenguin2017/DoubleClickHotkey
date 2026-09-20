@@ -44,7 +44,6 @@ TEST(ApplicationTest, StartsHiddenWithFiveSecondDelay)
     EXPECT_TRUE(p.view.send_enabled);
     EXPECT_TRUE(p.scheduled.empty());
     EXPECT_EQ(p.send_count, 0);
-    EXPECT_EQ(p.click_count, 0);
     EXPECT_EQ(p.exit_count, 1);
 }
 TEST(ApplicationTest, DuplicateActivationReturnsSuccessWithoutStartingService)
@@ -59,7 +58,6 @@ TEST(ApplicationTest, DuplicateActivationReturnsSuccessWithoutStartingService)
     EXPECT_TRUE(p.scheduled.empty());
     EXPECT_EQ(p.exit_count, 0);
     EXPECT_EQ(p.send_count, 0);
-    EXPECT_EQ(p.click_count, 0);
     EXPECT_TRUE(p.errors.empty());
 }
 TEST(ApplicationTest, ReportsStartupFailure)
@@ -159,7 +157,6 @@ TEST(ApplicationTest, ShowAndCloseOnlyChangeVisibility)
         EXPECT_EQ(f.exit_count, 0);
         EXPECT_TRUE(f.scheduled.empty());
         EXPECT_EQ(f.send_count, 0);
-        EXPECT_EQ(f.click_count, 0);
         EXPECT_EQ(f.view.log_text, "");
         EXPECT_EQ(f.view.log_revision, 0U);
         EXPECT_EQ(f.view.delay_text, "5");
@@ -448,14 +445,12 @@ TEST(ApplicationTest, QuitCancelsCountdownAndIgnoresLaterEvents)
         f.now = 10s;
         f.Emit(EventKind::tick);
         f.Emit(EventKind::send_requested);
-        f.Emit(EventKind::hotkey_pressed);
         f.Emit(EventKind::show);
         f.Emit(EventKind::hide);
         f.Emit(EventKind::delay_changed, "10");
         f.Emit(EventKind::diagnostic, "After quit");
         f.Emit(EventKind::quit);
         EXPECT_EQ(f.send_count, 0);
-        EXPECT_EQ(f.click_count, 0);
         EXPECT_EQ(f.exit_count, 1);
         EXPECT_EQ(f.present_count, presentations);
         EXPECT_EQ(f.visibility, std::vector<bool>{false});
@@ -466,50 +461,37 @@ TEST(ApplicationTest, QuitCancelsCountdownAndIgnoresLaterEvents)
     Application app(p);
     EXPECT_EQ(app.Run(), 0);
 }
-TEST(ApplicationTest, DoubleClicksOncePerPressEvenDuringCountdown)
+TEST(ApplicationTest, DoubleClickDiagnosticsStayHiddenDuringCountdown)
 {
     FakePlatformBinding p;
     p.run_action = [](auto& f) {
         f.Emit(EventKind::send_requested);
-        f.Emit(EventKind::hotkey_released);
-        EXPECT_EQ(f.click_count, 0);
-        f.Emit(EventKind::hotkey_pressed);
-        EXPECT_EQ(f.click_count, 1);
-        f.Emit(EventKind::hotkey_pressed);
-        EXPECT_EQ(f.click_count, 1);
-        f.Emit(EventKind::hotkey_released);
-        EXPECT_EQ(f.click_count, 1);
-        f.Emit(EventKind::hotkey_pressed);
-        EXPECT_EQ(f.click_count, 2);
+        f.Emit(EventKind::diagnostic, "Double-click failed; release failed");
         EXPECT_EQ(f.timer, 1s);
-        EXPECT_EQ(f.view.log_text, "F13 will be sent in 5 seconds. Focus the target application now.");
+        EXPECT_EQ(f.view.log_text, "F13 will be sent in 5 seconds. Focus the target application now.\n"
+                                   "Double-click failed; release failed");
+        EXPECT_FALSE(f.view.send_enabled);
         EXPECT_EQ(f.send_count, 0);
+        EXPECT_EQ(f.visibility, std::vector<bool>{false});
+        EXPECT_TRUE(f.errors.empty());
     };
     Application app(p);
     EXPECT_EQ(app.Run(), 0);
 }
-TEST(ApplicationTest, DoubleClickFailureStaysHiddenAndCanRetryAfterRelease)
+TEST(ApplicationTest, WorkerFailureCancelsCountdownAndReportsTheError)
 {
     FakePlatformBinding p;
-    p.click_result = {false, "Double-click failed"};
     p.run_action = [](auto& f) {
-        f.Emit(EventKind::hotkey_pressed);
-        EXPECT_EQ(f.click_count, 1);
-        EXPECT_EQ(f.view.log_text, "Double-click failed");
-        f.Emit(EventKind::hotkey_pressed);
-        EXPECT_EQ(f.click_count, 1);
-        EXPECT_EQ(f.view.log_revision, 1U);
-        f.click_result = {};
-        f.Emit(EventKind::hotkey_released);
-        f.Emit(EventKind::hotkey_pressed);
-        EXPECT_EQ(f.click_count, 2);
-        EXPECT_EQ(f.view.log_revision, 1U);
+        f.Emit(EventKind::send_requested);
+        ASSERT_TRUE(f.timer);
+        f.service_result = {false, "Keyboard hook thread exited unexpectedly"};
     };
     Application app(p);
-    EXPECT_EQ(app.Run(), 0);
-    EXPECT_EQ(p.view.log_text, "Double-click failed");
-    EXPECT_EQ(p.visibility, std::vector<bool>{false});
-    EXPECT_TRUE(p.errors.empty());
+    EXPECT_EQ(app.Run(), 1);
+    EXPECT_FALSE(p.timer);
+    EXPECT_EQ(p.exit_count, 1);
+    EXPECT_EQ(p.send_count, 0);
+    EXPECT_EQ(p.errors, (std::vector<std::string>{"Keyboard hook thread exited unexpectedly"}));
 }
 TEST(ApplicationTest, ReentrantPresentationEventsAreQueuedInOrder)
 {
@@ -544,8 +526,8 @@ TEST(ApplicationTest, ReentrantInputEventsDoNotRepeatTheScheduledSend)
             if (send_count == 1)
             {
                 Emit(EventKind::tick);
-                Emit(EventKind::hotkey_pressed);
-                EXPECT_EQ(click_count, 0);
+                Emit(EventKind::diagnostic, "Double-click failed");
+                EXPECT_EQ(view.log_text, "F13 will be sent in 5 seconds. Focus the target application now.");
             }
             return result;
         }
@@ -555,9 +537,9 @@ TEST(ApplicationTest, ReentrantInputEventsDoNotRepeatTheScheduledSend)
         f.now = 5s;
         f.Emit(EventKind::tick);
         EXPECT_EQ(f.send_count, 1);
-        EXPECT_EQ(f.click_count, 1);
         EXPECT_EQ(f.scheduled, (std::vector<std::optional<ElapsedTime>>{1s, std::nullopt}));
-        EXPECT_EQ(f.view.log_text, "F13 will be sent in 5 seconds. Focus the target application now.\nF13 sent.");
+        EXPECT_EQ(f.view.log_text, "F13 will be sent in 5 seconds. Focus the target application now.\n"
+                                   "F13 sent.\nDouble-click failed");
         EXPECT_TRUE(f.view.delay_enabled);
         EXPECT_TRUE(f.view.send_enabled);
     };

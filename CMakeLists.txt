@@ -23,6 +23,7 @@ add_library(
     double_click_hotkey_core
     STATIC
         src/application/application.cpp
+        src/application/hotkey_policy.cpp
         src/application/log_buffer.cpp
 )
 add_library(DoubleClickHotkey::core ALIAS double_click_hotkey_core)
@@ -44,6 +45,7 @@ if(DOUBLE_CLICK_HOTKEY_BUILD_APP)
             DOUBLE_CLICK_HOTKEY_PLATFORM_SOURCES
             src/platform/windows/clock.cpp
             src/platform/windows/input_injector.cpp
+            src/platform/windows/input_threads.cpp
             src/platform/windows/keyboard_hook.cpp
             src/platform/windows/keyboard_sender.cpp
             src/platform/windows/main_window.cpp
@@ -128,10 +130,12 @@ endif()
 set(
     DOUBLE_CLICK_HOTKEY_FORMAT_FILES
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/application.hpp"
+    "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/hotkey_policy.hpp"
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/log_buffer.hpp"
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/platform_binding.hpp"
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/platform_factory.hpp"
     "${PROJECT_SOURCE_DIR}/src/application/application.cpp"
+    "${PROJECT_SOURCE_DIR}/src/application/hotkey_policy.cpp"
     "${PROJECT_SOURCE_DIR}/src/application/log_buffer.cpp"
     "${PROJECT_SOURCE_DIR}/src/main.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/clock.cpp"
@@ -139,6 +143,8 @@ set(
     "${PROJECT_SOURCE_DIR}/src/platform/windows/input_injector.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/input_injector.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/input_tag.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/input_threads.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/input_threads.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_hook.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_hook.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_sender.cpp"
@@ -160,6 +166,7 @@ set(
     "${PROJECT_SOURCE_DIR}/src/platform/windows/windows_platform_binding.hpp"
     "${PROJECT_SOURCE_DIR}/tests/application/application.test.cpp"
     "${PROJECT_SOURCE_DIR}/tests/application/fake_platform_binding.hpp"
+    "${PROJECT_SOURCE_DIR}/tests/application/hotkey_policy.test.cpp"
     "${PROJECT_SOURCE_DIR}/tests/application/log_buffer.test.cpp"
     "${PROJECT_SOURCE_DIR}/tests/main.test.cpp"
 )

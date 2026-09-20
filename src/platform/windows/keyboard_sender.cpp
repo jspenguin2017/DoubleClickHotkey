@@ -22,6 +22,7 @@ bool KeyboardSender::SendF13() noexcept
     {
         input.type = INPUT_KEYBOARD;
         input.ki.wScan = F13ScanCode;
+        // The hook runs on another thread. Tag both transitions, including any reused compensating release.
         input.ki.dwExtraInfo = F13InputTag();
         input.ki.dwFlags = KEYEVENTF_SCANCODE;
     }

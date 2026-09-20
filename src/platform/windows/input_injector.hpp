@@ -3,9 +3,14 @@
 #include <windows.h>
 
 #include <optional>
+#include <string>
+#include <string_view>
 
 namespace double_click_hotkey::windows
 {
+// Format on the UI thread, never in a low-level hook callback.
+[[nodiscard]] std::string FormatInputInjectionError(std::string_view message, DWORD error_code);
+
 class InputInjector
 {
   public:

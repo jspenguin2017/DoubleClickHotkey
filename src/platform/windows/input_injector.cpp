@@ -2,6 +2,17 @@
 
 namespace double_click_hotkey::windows
 {
+std::string FormatInputInjectionError(const std::string_view message, const DWORD error_code)
+{
+    if (error_code != ERROR_SUCCESS)
+        return std::string(message) + ", error code: " + std::to_string(error_code);
+
+    return std::string(message) +
+           ": Windows blocked or otherwise rejected the input without reporting an error code. An integrity-level "
+           "mismatch is one possible cause; if the target application is elevated, run Double Click Hotkey at the "
+           "same or a higher integrity level.";
+}
+
 InputInjector::InputInjector(const SendInputFunction send_input) noexcept : send_input_(send_input)
 {
 }

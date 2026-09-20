@@ -38,18 +38,26 @@ toolchain's `objdump -p` with that path.
 
 Manually verify affected Windows behavior: F13 handling, tray/duplicate activation (including cross-elevation), scaled
 icons, log selection/scrolling, DPI/resizing, countdowns across sleep, and shutdown. Report unavailable checks as
-pending; cross-compilation and binary inspection do not verify runtime behavior.
+pending; cross-compilation and binary inspection do not verify runtime behavior. Use the
+[Windows thread validation scenarios](development.md#windows-thread-validation) for hook/input threading changes.
 
 ## Size history
 
-Recorded through 2026-09-19 using Linux x64 cross-builds with MinGW-w64 GCC 13-win32 and `linux-mingw-release`. Each row
+Recorded through 2026-09-20 using Linux x64 cross-builds with MinGW-w64 GCC 13-win32 and `linux-mingw-release`. Each row
 uses its own baseline; these are reference measurements, not limits across toolchains.
 
-| Change                                | Before (bytes) | After (bytes) |  Change |
-| ------------------------------------- | -------------: | ------------: | ------: |
-| Size flags and stream-free formatting |      2,506,211 |       178,688 | −92.87% |
-| Native tray application               |        178,688 |       241,152 | +34.96% |
-| Single PNG-compressed 256×256 icon    |        240,640 |       232,960 |  −3.19% |
+| Change                                  | Before (bytes) | After (bytes) |  Change |
+| --------------------------------------- | -------------: | ------------: | ------: |
+| Size flags and stream-free formatting   |      2,506,211 |       178,688 | −92.87% |
+| Native tray application                 |        178,688 |       241,152 | +34.96% |
+| Single PNG-compressed 256×256 icon      |        240,640 |       232,960 |  −3.19% |
+| Dedicated hook and double-click threads |        232,960 |       236,544 |  +1.54% |
 
 The tray increase added the native window/tray, Unicode log, bounded log buffer, and nonblocking countdown. Recorded
 builds retained Windows-only DLL imports and ASLR/NX; native Windows desktop and scaled-icon checks remain pending.
+
+The thread split adds 3,584 bytes for worker startup, message pumps, cancellation, and failure reporting: 2,048 bytes in
+`.text`, 512 in `.rdata`, and 1,024 across unwind/exception sections. The same-toolchain comparison retained the
+existing Windows-only DLL import set, GUI subsystem, ASLR/NX, and identical icon/version/manifest resource bytes. Debug
+information is present in the Debug executable. Both Windows build presets, all 51 portable tests, and formatting checks
+passed; native Windows thread/input scenarios remain pending on the Linux validation host.

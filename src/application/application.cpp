@@ -143,18 +143,6 @@ void Application::ApplyEvent(const ApplicationEvent& event)
         if (deadline_)
             UpdateCountdown();
         break;
-    case EventKind::hotkey_released:
-        hotkey_is_pressed_ = false;
-        break;
-    case EventKind::hotkey_pressed:
-        if (!hotkey_is_pressed_)
-        {
-            hotkey_is_pressed_ = true;
-            const auto result = platform_.DoubleClick();
-            if (!result.success)
-                WriteLine(result.error);
-        }
-        break;
     case EventKind::quit:
         break;
     }

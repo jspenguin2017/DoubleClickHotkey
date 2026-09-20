@@ -9,6 +9,7 @@ add_executable(
     double_click_hotkey_tests
     $<TARGET_OBJECTS:double_click_hotkey_main_for_tests>
     application/application.test.cpp
+    application/hotkey_policy.test.cpp
     application/log_buffer.test.cpp
     main.test.cpp
 )

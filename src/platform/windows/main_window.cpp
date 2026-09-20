@@ -1,7 +1,7 @@
 #include "platform/windows/main_window.hpp"
 
 #include "platform/windows/clock.hpp"
-#include "platform/windows/keyboard_hook.hpp"
+#include "platform/windows/input_threads.hpp"
 #include "platform/windows/resource.h"
 #include "platform/windows/single_instance.hpp"
 
@@ -80,6 +80,7 @@ MainWindow::~MainWindow()
 {
     ClearHandler();
     tray_ = nullptr;
+    input_threads_ = nullptr;
     CancelTimer();
     window_.Reset();
 }
@@ -94,6 +95,10 @@ HICON MainWindow::SmallIcon() const noexcept
 void MainWindow::SetTray(TrayIcon* tray) noexcept
 {
     tray_ = tray;
+}
+void MainWindow::SetInputThreads(InputThreads* input_threads) noexcept
+{
+    input_threads_ = input_threads;
 }
 void MainWindow::ClearHandler() noexcept
 {
@@ -341,6 +346,8 @@ LRESULT CALLBACK MainWindow::WindowProc(HWND window, UINT message, WPARAM wparam
         {
             self->failure_ = std::current_exception();
             self->CancelTimer();
+            if (self->input_threads_)
+                self->input_threads_->RequestStop();
             PostQuitMessage(1);
             return 0;
         }
@@ -371,11 +378,13 @@ LRESULT MainWindow::Message(HWND window, UINT message, WPARAM wparam, LPARAM lpa
                 Emit(EventKind::send_requested);
         }
         return 0;
-    case KeyboardHook::HotkeyEventMessage:
-        if (wparam == static_cast<WPARAM>(KeyTransition::pressed))
-            Emit(EventKind::hotkey_pressed);
-        else if (wparam == static_cast<WPARAM>(KeyTransition::released))
-            Emit(EventKind::hotkey_released);
+    case InputThreads::DoubleClickFailureMessage:
+        if (input_threads_)
+            Emit(EventKind::diagnostic, InputThreads::DoubleClickFailureText(wparam, lparam));
+        return 0;
+    case InputThreads::WorkerFailureMessage:
+        if (input_threads_)
+            input_threads_->CheckFailure();
         return 0;
     case WM_TIMER:
         if (wparam == CountdownTimer && timer_deadline_)

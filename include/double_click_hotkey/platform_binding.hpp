@@ -11,19 +11,11 @@ namespace double_click_hotkey
 {
 using ElapsedTime = std::chrono::milliseconds;
 
-enum class KeyTransition
-{
-    pressed,
-    released
-};
-
 enum class EventKind
 {
     initialized,
     show,
     hide,
-    hotkey_pressed,
-    hotkey_released,
     delay_changed,
     send_requested,
     tick,
@@ -63,8 +55,9 @@ class PlatformBinding
     PlatformBinding(PlatformBinding&&) = delete;
     PlatformBinding& operator=(PlatformBinding&&) = delete;
 
-    // Own native service resources, start hidden, and invoke callbacks only during this call. Duplicate activation
-    // returns success without initialization. Deliver quit before teardown and detach all callbacks before returning.
+    // Own native service resources and start hidden. Invoke callbacks only on the calling/UI thread during this call.
+    // Duplicate activation returns success without initialization. Deliver quit before teardown, join native workers,
+    // and detach all callbacks before returning. Hotkey double-clicks run independently of this thread.
     [[nodiscard]] virtual PlatformResult RunService(EventHandler handler) = 0;
     [[nodiscard]] virtual ElapsedTime Now() = 0;
     [[nodiscard]] virtual PlatformResult ScheduleTick(std::optional<ElapsedTime> deadline) = 0;
@@ -72,8 +65,8 @@ class PlatformBinding
     virtual void SetWindowVisible(bool visible) = 0;
     virtual void ShowError(std::string_view message) = 0;
     virtual void RequestExit() noexcept = 0;
+    // Synchronous, on the calling/UI thread. Generated F13 must bypass the independently running hotkey hook.
     [[nodiscard]] virtual PlatformResult SendF13() = 0;
-    [[nodiscard]] virtual PlatformResult DoubleClick() = 0;
 
   protected:
     PlatformBinding() = default;

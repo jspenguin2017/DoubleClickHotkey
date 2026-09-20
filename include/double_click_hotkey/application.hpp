@@ -28,6 +28,5 @@ class Application
     std::deque<ApplicationEvent> pending_events_;
     bool processing_ = false;
     bool stopped_ = false;
-    bool hotkey_is_pressed_ = false;
 };
 } // namespace double_click_hotkey
