@@ -1,5 +1,7 @@
 #include "platform/windows/clock.hpp"
+
 #include <windows.h>
+
 namespace double_click_hotkey::windows
 {
 ElapsedTime InterruptTime() noexcept

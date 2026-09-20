@@ -1,5 +1,7 @@
 #pragma once
+
 #include <windows.h>
+
 namespace double_click_hotkey::windows
 {
 // Shared by the sender and hook. The process-local address identifies our own input; it is not an IPC capability.
