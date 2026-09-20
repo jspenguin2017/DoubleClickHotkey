@@ -1,132 +1,152 @@
 #include "platform/windows/windows_platform_binding.hpp"
 
-#include "platform/windows/console_control_handler.hpp"
-#include "platform/windows/keyboard_hook.hpp"
+#include "platform/windows/clock.hpp"
 #include "platform/windows/single_instance.hpp"
-
-#include <windows.h>
-
-#include <chrono>
-#include <memory>
-#include <string>
-#include <utility>
 
 namespace double_click_hotkey::windows
 {
-namespace
+PlatformResult WindowsPlatformBinding::RunService(EventHandler handler)
 {
-constexpr wchar_t SingleInstanceName[] = L"Local\\double-click-hotkey-mutex-v3-dd74d3c1-ded5-4d6c-869c-f06eb80200ee";
-} // namespace
-
-WindowsPlatformBinding::WindowsPlatformBinding(const KeyboardSender::SendInputFunction send_input) noexcept
-    : keyboard_sender_(send_input), mouse_(send_input)
-{
-}
-
-PlatformResult WindowsPlatformBinding::RunService(HotkeyEventHandler hotkey_handler,
-                                                  WindowVisibilityHandler visibility_handler)
-{
-    const SingleInstance single_instance(SingleInstanceName);
-    if (single_instance.Status() == SingleInstanceStatus::already_running)
+    PlatformResult result;
+    SingleInstance instance; // Keep ownership until the hook and all UI resources have been released.
+    bool initialized = false;
+    try
     {
-        return {PlatformResultStatus::already_running, {}};
-    }
-    if (single_instance.Status() == SingleInstanceStatus::failed)
-    {
-        return {PlatformResultStatus::failure,
-                FormatError(single_instance.LastErrorMessage(), single_instance.LastErrorCode())};
-    }
-
-    InstanceCommandReceiver command_receiver;
-    if (!command_receiver.Initialize())
-    {
-        return {PlatformResultStatus::failure,
-                FormatError(command_receiver.LastErrorMessage(), command_receiver.LastErrorCode())};
-    }
-
-    return RunMessageLoop(std::move(hotkey_handler), std::move(visibility_handler), command_receiver);
-}
-
-PlatformResult WindowsPlatformBinding::ReserveSingleInstance()
-{
-    if (single_instance_reservation_ != nullptr)
-    {
-        return {PlatformResultStatus::failure, "The single application instance is already reserved."};
-    }
-
-    auto reservation = std::make_unique<SingleInstance>(SingleInstanceName);
-    if (reservation->Status() == SingleInstanceStatus::already_running)
-    {
-        return {PlatformResultStatus::already_running, {}};
-    }
-    if (reservation->Status() == SingleInstanceStatus::failed)
-    {
-        return {PlatformResultStatus::failure,
-                FormatError(reservation->LastErrorMessage(), reservation->LastErrorCode())};
-    }
-
-    single_instance_reservation_ = std::move(reservation);
-    return {};
-}
-
-PlatformResult WindowsPlatformBinding::SendWindowCommand(const WindowVisibility visibility)
-{
-    DWORD probe_error_code = ERROR_SUCCESS;
-    const SingleInstanceProbeStatus probe_status = ProbeSingleInstance(SingleInstanceName, probe_error_code);
-    if (probe_status == SingleInstanceProbeStatus::not_running)
-    {
-        return {PlatformResultStatus::not_running, {}};
-    }
-    if (probe_status == SingleInstanceProbeStatus::failed)
-    {
-        return {PlatformResultStatus::failure,
-                FormatError("Failed to open the session-local single-instance mutex while checking for a running "
-                            "instance",
-                            probe_error_code)};
-    }
-
-    InstanceCommandError error;
-    if (!SendInstanceCommand(ToInstanceCommand(visibility), error))
-    {
-        if (error.code == ERROR_FILE_NOT_FOUND)
+        if (!instance.AcquireOrShow())
+            return {};
+        window_ = std::make_unique<MainWindow>(handler);
+        tray_ = std::make_unique<TrayIcon>(window_->Get(), window_->SmallIcon());
+        window_->SetTray(tray_.get());
+        hook_ = std::make_unique<KeyboardHook>();
+        if (!hook_->Install(window_->Get()))
+            throw std::runtime_error(NativeError("Install F13 keyboard hook", hook_->LastErrorCode()));
+        const bool tray_ready = tray_->Add();
+        initialized = true;
+        handler({EventKind::initialized, {}});
+        if (!tray_ready)
         {
-            std::string message(error.message);
-            message += "; the instance's command channel may not be ready because it is still initializing or has "
-                       "exited";
-            return {PlatformResultStatus::failure, FormatError(message.c_str(), error.code)};
+            handler(
+                {EventKind::diagnostic,
+                 "Unable to create the tray icon. Use Quit Double Click Hotkey in the window's system menu to exit."});
+            handler({EventKind::show, {}});
         }
-
-        return {PlatformResultStatus::failure, FormatError(error.message, error.code)};
+        instance.StartListening(); // Publish readiness only after the window, hook, and initial presentation exist.
+        const HANDLE show_event = instance.ShowEvent();
+        while (!exiting_)
+        {
+            const auto wait = MsgWaitForMultipleObjectsEx(1, &show_event, INFINITE, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+            Require(wait != WAIT_FAILED, "Wait for application events");
+            if (wait == WAIT_OBJECT_0)
+                handler({EventKind::show, {}});
+            MSG message{};
+            // Bound drains to avoid starving duplicate-instance Show requests in a busy message queue.
+            for (int count = 0; count < 128 && !exiting_ && PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE); ++count)
+            {
+                if (message.message == WM_QUIT)
+                {
+                    exiting_ = true;
+                    break;
+                }
+                if (!window_->PreTranslate(message))
+                {
+                    TranslateMessage(&message);
+                    DispatchMessageW(&message);
+                }
+                if (window_->Failure())
+                    std::rethrow_exception(window_->Failure());
+                if (hook_ && hook_->EventQueueFailed())
+                    throw std::runtime_error(NativeError("Queue F13 event", hook_->LastErrorCode()));
+            }
+        }
+        if (window_->Failure())
+            std::rethrow_exception(window_->Failure());
     }
-
-    return {};
-}
-
-void WindowsPlatformBinding::SetWindowVisibility(const WindowVisibility visibility)
-{
-    if (visibility == WindowVisibility::shown)
+    catch (const std::exception& error)
     {
-        console_.Show();
+        result = {false, error.what()};
     }
-    else
+    catch (...)
     {
-        console_.Hide();
+        result = {false, "Unexpected native application error."};
     }
+    if (initialized)
+    {
+        try
+        {
+            if (!result.success)
+                handler({EventKind::diagnostic, result.error});
+        }
+        catch (...)
+        {
+        }
+        try
+        {
+            handler({EventKind::quit, {}});
+        }
+        catch (...)
+        {
+            // Native cleanup still runs if controller/presentation allocation fails.
+        }
+    }
+    Cleanup();
+    return result;
 }
 
-void WindowsPlatformBinding::WriteLine(const std::string_view message)
+void WindowsPlatformBinding::Cleanup() noexcept
 {
-    console_.WriteLine(message);
+    exiting_ = true;
+    if (window_)
+    {
+        window_->ClearHandler();
+        window_->CancelTimer();
+        window_->SetTray(nullptr);
+    }
+    hook_.reset();
+    tray_.reset();
+    window_.reset();
 }
 
-void WindowsPlatformBinding::WaitFor(const std::chrono::milliseconds duration)
+ElapsedTime WindowsPlatformBinding::Now()
 {
-    Sleep(static_cast<DWORD>(duration.count()));
+    return InterruptTime();
 }
-
-void WindowsPlatformBinding::WaitForKey()
+PlatformResult WindowsPlatformBinding::ScheduleTick(const std::optional<ElapsedTime> deadline)
 {
-    console_.WaitForKey();
+    return window_ ? window_->ScheduleTick(deadline) : PlatformResult{};
+}
+void WindowsPlatformBinding::Present(const ViewState& state)
+{
+    if (window_ && !exiting_)
+        window_->Present(state);
+}
+void WindowsPlatformBinding::SetWindowVisible(const bool visible)
+{
+    if (window_ && !exiting_)
+        window_->SetVisible(visible);
+}
+void WindowsPlatformBinding::ShowError(const std::string_view message)
+{
+    // RunService has finished. Do not let its pending WM_QUIT immediately dismiss the fatal-error dialog.
+    MSG pending{};
+    while (PeekMessageW(&pending, nullptr, WM_QUIT, WM_QUIT, PM_REMOVE))
+    {
+    }
+    const auto text = ToWide(message);
+    MessageBoxW(window_ ? window_->Get() : nullptr, text.c_str(), L"Double Click Hotkey - Error", MB_OK | MB_ICONERROR);
+}
+void WindowsPlatformBinding::RequestExit() noexcept
+{
+    exiting_ = true;
+    if (window_)
+    {
+        window_->CancelTimer();
+        window_->SetTray(nullptr);
+    }
+    // Session-end callbacks can be followed immediately by process teardown; release native input/tray resources now.
+    hook_.reset();
+    if (tray_)
+        tray_->Remove();
+    PostQuitMessage(0);
 }
 
 PlatformResult WindowsPlatformBinding::SendF13()
@@ -140,7 +160,7 @@ PlatformResult WindowsPlatformBinding::SendF13()
             message += "; ";
             message += FormatInputInjectionError("failed to release F13 after the partial send", *release_error_code);
         }
-        return {PlatformResultStatus::failure, std::move(message)};
+        return {false, std::move(message)};
     }
 
     return {};
@@ -158,7 +178,7 @@ PlatformResult WindowsPlatformBinding::DoubleClick()
             message += FormatInputInjectionError("failed to release the primary mouse button after the partial send",
                                                  *release_error_code);
         }
-        return {PlatformResultStatus::failure, std::move(message)};
+        return {false, std::move(message)};
     }
 
     return {};
@@ -182,87 +202,4 @@ std::string WindowsPlatformBinding::FormatInputInjectionError(const char* const 
            "same or a higher integrity level.";
 }
 
-InstanceCommand WindowsPlatformBinding::ToInstanceCommand(const WindowVisibility visibility) noexcept
-{
-    return visibility == WindowVisibility::shown ? InstanceCommand::show_window : InstanceCommand::hide_window;
-}
-
-PlatformResult WindowsPlatformBinding::RunMessageLoop(HotkeyEventHandler hotkey_handler,
-                                                      WindowVisibilityHandler visibility_handler,
-                                                      InstanceCommandReceiver& command_receiver)
-{
-    ConsoleControlHandler control_handler;
-    if (!control_handler.Install())
-    {
-        return {PlatformResultStatus::failure,
-                FormatError("Failed to set console control handler", control_handler.LastErrorCode())};
-    }
-
-    KeyboardHook keyboard_hook;
-    if (!keyboard_hook.Install(std::move(hotkey_handler)))
-    {
-        return {PlatformResultStatus::failure,
-                FormatError("Failed to set keyboard hook", keyboard_hook.LastErrorCode())};
-    }
-
-    const InstanceCommandReceiver::Handles& event_handles = command_receiver.EventHandles();
-    while (true)
-    {
-        const DWORD result = MsgWaitForMultipleObjectsEx(static_cast<DWORD>(event_handles.size()), event_handles.data(),
-                                                         INFINITE, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
-        if (keyboard_hook.EventQueueFailed())
-        {
-            return {PlatformResultStatus::failure,
-                    FormatError("Failed to queue a hotkey event", keyboard_hook.LastErrorCode())};
-        }
-
-        const DWORD first_event_result = WAIT_OBJECT_0;
-        const DWORD message_result = first_event_result + static_cast<DWORD>(event_handles.size());
-        if (result >= first_event_result && result < message_result)
-        {
-            const std::optional<InstanceCommand> command = command_receiver.TakeLatestCommand();
-            if (command.has_value())
-            {
-                visibility_handler(*command == InstanceCommand::show_window ? WindowVisibility::shown
-                                                                            : WindowVisibility::hidden);
-            }
-            continue;
-        }
-        if (result == WAIT_FAILED)
-        {
-            return {PlatformResultStatus::failure,
-                    FormatError("Failed to wait for a message or instance command", GetLastError())};
-        }
-        if (result != message_result)
-        {
-            return {PlatformResultStatus::failure, "Received an unexpected message wait result."};
-        }
-
-        MSG message{};
-        while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
-        {
-            if (keyboard_hook.EventQueueFailed())
-            {
-                return {PlatformResultStatus::failure,
-                        FormatError("Failed to queue a hotkey event", keyboard_hook.LastErrorCode())};
-            }
-            if (message.message == WM_QUIT)
-            {
-                return {};
-            }
-            if (keyboard_hook.HandleQueuedEvent(message))
-            {
-                continue;
-            }
-            static_cast<void>(TranslateMessage(&message));
-            static_cast<void>(DispatchMessageW(&message));
-        }
-
-        if (keyboard_hook.EventQueueFailed())
-        {
-            return {PlatformResultStatus::failure,
-                    FormatError("Failed to queue a hotkey event", keyboard_hook.LastErrorCode())};
-        }
-    }
-}
 } // namespace double_click_hotkey::windows

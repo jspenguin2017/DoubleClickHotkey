@@ -1,5 +1,7 @@
 #include "platform/windows/keyboard_sender.hpp"
 
+#include "platform/windows/input_tag.hpp"
+
 #include <array>
 
 namespace double_click_hotkey::windows
@@ -20,6 +22,7 @@ bool KeyboardSender::SendF13() noexcept
     {
         input.type = INPUT_KEYBOARD;
         input.ki.wScan = F13ScanCode;
+        input.ki.dwExtraInfo = F13InputTag();
         input.ki.dwFlags = KEYEVENTF_SCANCODE;
     }
     inputs[1].ki.dwFlags |= KEYEVENTF_KEYUP;

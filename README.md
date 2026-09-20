@@ -4,19 +4,17 @@ Double Click Hotkey is a Windows 11 x64 utility that turns <kbd>F13</kbd> into a
 
 ## Usage
 
-Run `DoubleClickHotkey.exe` and press <kbd>F13</kbd> to double-click. The app consumes F13 events, hides its console,
-and allows one instance per interactive Windows session. It needs no separately installed runtime.
+Run `DoubleClickHotkey.exe` to start hidden in the notification area. Press <kbd>F13</kbd> to double-click. The app
+consumes F13 events and allows one instance per interactive Windows session. It needs no separately installed runtime.
 
-Launch with one of these options when needed:
+- Click the tray icon or choose **Show** to open the window. Launching the executable again also shows the running app.
+- The read-only log keeps the newest 500 lines. Select text to copy it, or use <kbd>Ctrl</kbd>+<kbd>A</kbd> to select
+  all.
+- To configure F13 in another program, choose a delay in seconds, click **Send F13**, and focus that program before the
+  countdown ends. The delay starts at five seconds on each launch.
+- Closing the window hides it. Choose **Quit** from the tray menu to exit.
 
-| Option          | Effect                                                                    |
-| --------------- | ------------------------------------------------------------------------- |
-| `--start-shown` | Start the service with its console visible.                               |
-| `--show`        | Show the running service's console and logged errors.                     |
-| `--hide`        | Hide the running service's console.                                       |
-| `--send-f13`    | With no service running, wait five seconds and send F13 for hotkey setup. |
-
-See [usage details](docs/usage.md) for console setup, command failures, elevation limits, and the security model.
+There are no command-line options. See [usage details](docs/usage.md) for countdowns, recovery, and elevation limits.
 
 ## Run at startup
 

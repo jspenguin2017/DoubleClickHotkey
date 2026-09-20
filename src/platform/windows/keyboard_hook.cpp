@@ -1,6 +1,6 @@
 #include "platform/windows/keyboard_hook.hpp"
 
-#include <utility>
+#include "platform/windows/input_tag.hpp"
 
 namespace double_click_hotkey::windows
 {
@@ -19,7 +19,7 @@ KeyboardHook::~KeyboardHook()
     }
 }
 
-bool KeyboardHook::Install(HotkeyEventHandler handler)
+bool KeyboardHook::Install(HWND receiver)
 {
     if (handle_ != nullptr || active_hook_ != nullptr)
     {
@@ -37,16 +37,14 @@ bool KeyboardHook::Install(HotkeyEventHandler handler)
     MSG message{};
     static_cast<void>(PeekMessageW(&message, nullptr, WM_USER, WM_USER, PM_NOREMOVE));
 
-    handler_ = std::move(handler);
-    owner_thread_id_ = GetCurrentThreadId();
+    receiver_ = receiver;
     active_hook_ = this;
     handle_ = SetWindowsHookExW(WH_KEYBOARD_LL, &HandleKeyboardEvent, executable_module, 0);
     if (handle_ == nullptr)
     {
         last_error_code_ = GetLastError();
         active_hook_ = nullptr;
-        handler_ = {};
-        owner_thread_id_ = 0;
+        receiver_ = nullptr;
         return false;
     }
 
@@ -54,19 +52,6 @@ bool KeyboardHook::Install(HotkeyEventHandler handler)
     hotkey_is_pressed_ = false;
     pass_hotkey_through_until_release_ = GetAsyncKeyState(VK_F13) < 0;
     event_queue_failed_ = false;
-    return true;
-}
-
-bool KeyboardHook::HandleQueuedEvent(const MSG& message)
-{
-    if (message.hwnd != nullptr || message.message != HotkeyEventMessage ||
-        (message.wParam != static_cast<WPARAM>(KeyTransition::pressed) &&
-         message.wParam != static_cast<WPARAM>(KeyTransition::released)))
-    {
-        return false;
-    }
-
-    handler_({static_cast<KeyTransition>(message.wParam)});
     return true;
 }
 
@@ -110,6 +95,12 @@ LRESULT KeyboardHook::DispatchKeyboardEvent(const int code, const WPARAM message
         return CallNextHookEx(handle_, code, message, data);
     }
 
+    // Our setup keystroke must reach the foreground app without changing physical-key tracking.
+    if ((keyboard_event->flags & LLKHF_INJECTED) != 0 && keyboard_event->dwExtraInfo == F13InputTag())
+    {
+        return CallNextHookEx(handle_, code, message, data);
+    }
+
     if (pass_hotkey_through_until_release_)
     {
         if (is_key_up)
@@ -141,7 +132,7 @@ LRESULT KeyboardHook::DispatchKeyboardEvent(const int code, const WPARAM message
 
 void KeyboardHook::QueueEvent(const KeyTransition transition) noexcept
 {
-    if (PostThreadMessageW(owner_thread_id_, HotkeyEventMessage, static_cast<WPARAM>(transition), 0) == 0)
+    if (PostMessageW(receiver_, HotkeyEventMessage, static_cast<WPARAM>(transition), 0) == 0)
     {
         last_error_code_ = GetLastError();
         event_queue_failed_ = true;

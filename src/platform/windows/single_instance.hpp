@@ -1,44 +1,20 @@
 #pragma once
 
-#include <windows.h>
+#include "platform/windows/native.hpp"
 
 namespace double_click_hotkey::windows
 {
-enum class SingleInstanceStatus
-{
-    acquired,
-    already_running,
-    failed,
-};
-
-enum class SingleInstanceProbeStatus
-{
-    running,
-    not_running,
-    failed,
-};
-
+inline constexpr wchar_t MainWindowClass[] = L"DoubleClickHotkey.MainWindow";
 class SingleInstance
 {
   public:
-    explicit SingleInstance(const wchar_t* name) noexcept;
-    ~SingleInstance();
-
-    SingleInstance(const SingleInstance&) = delete;
-    SingleInstance& operator=(const SingleInstance&) = delete;
-    SingleInstance(SingleInstance&&) = delete;
-    SingleInstance& operator=(SingleInstance&&) = delete;
-
-    [[nodiscard]] SingleInstanceStatus Status() const noexcept;
-    [[nodiscard]] const char* LastErrorMessage() const noexcept;
-    [[nodiscard]] DWORD LastErrorCode() const noexcept;
+    // False means Show was delivered to the existing owner. Failed/bounded-out activation throws.
+    bool AcquireOrShow();
+    void StartListening();
+    HANDLE ShowEvent() const noexcept;
 
   private:
-    HANDLE mutex_ = nullptr;
-    SingleInstanceStatus status_ = SingleInstanceStatus::failed;
-    const char* last_error_message_ = "Failed to reserve the session-local single-instance mutex";
-    DWORD last_error_code_ = ERROR_SUCCESS;
+    UniqueHandle mutex_;
+    UniqueHandle event_;
 };
-
-[[nodiscard]] SingleInstanceProbeStatus ProbeSingleInstance(const wchar_t* name, DWORD& error_code) noexcept;
 } // namespace double_click_hotkey::windows

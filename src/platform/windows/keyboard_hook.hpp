@@ -17,8 +17,8 @@ class KeyboardHook
     KeyboardHook(KeyboardHook&&) = delete;
     KeyboardHook& operator=(KeyboardHook&&) = delete;
 
-    [[nodiscard]] bool Install(HotkeyEventHandler handler);
-    [[nodiscard]] bool HandleQueuedEvent(const MSG& message);
+    static constexpr UINT HotkeyEventMessage = WM_APP + 2;
+    [[nodiscard]] bool Install(HWND receiver);
     [[nodiscard]] bool EventQueueFailed() const noexcept;
     [[nodiscard]] DWORD LastErrorCode() const noexcept;
 
@@ -28,10 +28,8 @@ class KeyboardHook
     void QueueEvent(KeyTransition transition) noexcept;
 
     static KeyboardHook* active_hook_;
-    static constexpr UINT HotkeyEventMessage = WM_APP;
     HHOOK handle_ = nullptr;
-    HotkeyEventHandler handler_;
-    DWORD owner_thread_id_ = 0;
+    HWND receiver_ = nullptr;
     DWORD last_error_code_ = ERROR_SUCCESS;
     bool hotkey_is_pressed_ = false;
     bool pass_hotkey_through_until_release_ = false;

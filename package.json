@@ -1,7 +1,8 @@
 {
   "description": "Turn F13 into a global Windows double-click hotkey.",
   "devDependencies": {
-    "prettier": "3.9.6"
+    "prettier": "3.9.6",
+    "svg-to-ico": "2.0.0"
   },
   "engines": {
     "node": ">=24.19.0"
@@ -17,7 +18,8 @@
     "build": "node scripts/cmake.mjs build",
     "format": "prettier --write . && node scripts/cmake.mjs format",
     "format:check": "prettier --check . && node scripts/cmake.mjs format-check",
-    "test": "node scripts/cmake.mjs test"
+    "test": "node scripts/cmake.mjs test",
+    "icon:convert": "node scripts/convert-icon.mjs"
   },
   "version": "1.0.0"
 }

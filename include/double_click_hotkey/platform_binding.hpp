@@ -1,76 +1,77 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 
 namespace double_click_hotkey
 {
+using ElapsedTime = std::chrono::milliseconds;
+
 enum class KeyTransition
 {
     pressed,
-    released,
+    released
 };
 
-struct HotkeyEvent
+enum class EventKind
 {
-    KeyTransition transition = KeyTransition::pressed;
+    initialized,
+    show,
+    hide,
+    hotkey_pressed,
+    hotkey_released,
+    delay_changed,
+    send_requested,
+    tick,
+    diagnostic,
+    quit
 };
-
-// The binding suppresses native hotkey transitions, queues their semantic events, and invokes this handler only after
-// any time-limited native input callback has returned.
-using HotkeyEventHandler = std::function<void(const HotkeyEvent&)>;
-
-enum class WindowVisibility
+struct ApplicationEvent
 {
-    hidden,
-    shown,
+    EventKind kind;
+    std::string text;
 };
+using EventHandler = std::function<void(const ApplicationEvent&)>;
 
-using WindowVisibilityHandler = std::function<void(WindowVisibility)>;
-
-enum class PlatformResultStatus
+struct ViewState
 {
-    success,
-    already_running,
-    not_running,
-    failure,
+    std::string log_text;
+    std::uint64_t log_revision = 0;
+    std::uint64_t removed_lines = 0;
+    std::string delay_text = "5";
+    std::string send_caption = "Send F13";
+    bool delay_enabled = true;
+    bool send_enabled = true;
 };
 
 struct PlatformResult
 {
-    PlatformResultStatus status = PlatformResultStatus::success;
-    // Set when status is failure; the message describes the native operation that failed.
-    std::string error_message;
+    bool success = true;
+    std::string error;
 };
 
 class PlatformBinding
 {
   public:
     virtual ~PlatformBinding() = default;
-
     PlatformBinding(const PlatformBinding&) = delete;
     PlatformBinding& operator=(const PlatformBinding&) = delete;
     PlatformBinding(PlatformBinding&&) = delete;
     PlatformBinding& operator=(PlatformBinding&&) = delete;
 
-    // RunService returns success after a normal stop, already_running when another service owns the instance, or
-    // failure for a native setup or event-loop error. The binding owns native service resources and invokes handlers
-    // only while this call is active.
-    [[nodiscard]] virtual PlatformResult RunService(HotkeyEventHandler hotkey_handler,
-                                                    WindowVisibilityHandler visibility_handler) = 0;
-
-    // ReserveSingleInstance returns success, already_running, or failure. A successful reservation is held until the
-    // binding is destroyed. SendWindowCommand returns success, not_running, or failure.
-    [[nodiscard]] virtual PlatformResult ReserveSingleInstance() = 0;
-    [[nodiscard]] virtual PlatformResult SendWindowCommand(WindowVisibility visibility) = 0;
-
-    virtual void SetWindowVisibility(WindowVisibility visibility) = 0;
-    virtual void WriteLine(std::string_view message) = 0;
-    virtual void WaitFor(std::chrono::milliseconds duration) = 0;
-    virtual void WaitForKey() = 0;
-
+    // Own native service resources, start hidden, and invoke callbacks only during this call. Duplicate activation
+    // returns success without initialization. Deliver quit before teardown and detach all callbacks before returning.
+    [[nodiscard]] virtual PlatformResult RunService(EventHandler handler) = 0;
+    [[nodiscard]] virtual ElapsedTime Now() = 0;
+    [[nodiscard]] virtual PlatformResult ScheduleTick(std::optional<ElapsedTime> deadline) = 0;
+    virtual void Present(const ViewState& state) = 0;
+    virtual void SetWindowVisible(bool visible) = 0;
+    virtual void ShowError(std::string_view message) = 0;
+    virtual void RequestExit() noexcept = 0;
     [[nodiscard]] virtual PlatformResult SendF13() = 0;
     [[nodiscard]] virtual PlatformResult DoubleClick() = 0;
 

@@ -1,161 +1,188 @@
 #include "double_click_hotkey/application.hpp"
 
-#include <chrono>
+#include <charconv>
+#include <exception>
+#include <utility>
 
 namespace double_click_hotkey
 {
-namespace
+std::optional<std::chrono::seconds> ParseDelay(const std::string_view text) noexcept
 {
-constexpr char UsageMessage[] = "Usage: DoubleClickHotkey [--start-shown | --show | --hide | --send-f13]";
-constexpr char AlreadyRunningMessage[] =
-    "Another instance of this application is already running in this interactive session.";
-constexpr char NoReadyInstanceMessage[] =
-    "No running instance in this interactive session is ready to receive commands.";
-constexpr auto SendF13Delay = std::chrono::seconds(5);
-} // namespace
+    if (text.empty())
+        return std::nullopt;
+    for (const char digit : text)
+    {
+        if (digit < '0' || digit > '9')
+            return std::nullopt;
+    }
+    unsigned int seconds = 0;
+    const auto parsed = std::from_chars(text.data(), text.data() + text.size(), seconds);
+    if (parsed.ec != std::errc{} || seconds < 1 || seconds > 3600)
+        return std::nullopt;
+    return std::chrono::seconds(seconds);
+}
 
-Application::Application(PlatformBinding& platform, const LaunchCommand launch_command) noexcept
-    : platform_(platform), launch_command_(launch_command)
+Application::Application(PlatformBinding& platform) : platform_(platform)
 {
 }
 
 int Application::Run()
 {
-    switch (launch_command_)
+    try
     {
-    case LaunchCommand::run:
-        return RunService(WindowVisibility::hidden);
-
-    case LaunchCommand::start_shown:
-        return RunService(WindowVisibility::shown);
-
-    case LaunchCommand::show_window:
-        return SendWindowCommand(WindowVisibility::shown);
-
-    case LaunchCommand::hide_window:
-        return SendWindowCommand(WindowVisibility::hidden);
-
-    case LaunchCommand::send_f13:
-        return SendF13AfterDelay();
-
-    case LaunchCommand::invalid:
-        ReportError(UsageMessage, false);
-        return 1;
+        const auto result = platform_.RunService([this](const ApplicationEvent& event) { HandleEvent(event); });
+        if (result.success)
+            return 0;
+        WriteLine(result.error);
+        platform_.ShowError(result.error);
     }
-
-    ReportError(UsageMessage, false);
+    catch (const std::exception& error)
+    {
+        if (!stopped_)
+            Stop();
+        platform_.ShowError(error.what());
+    }
+    catch (...)
+    {
+        if (!stopped_)
+            Stop();
+        platform_.ShowError("Unexpected application error.");
+    }
     return 1;
 }
 
-int Application::RunService(const WindowVisibility initial_visibility)
+void Application::WriteLine(const std::string_view message)
 {
-    platform_.SetWindowVisibility(initial_visibility);
-
-    const PlatformResult result =
-        platform_.RunService([this](const HotkeyEvent& event) { HandleHotkeyEvent(event); },
-                             [this](const WindowVisibility visibility) { HandleWindowVisibility(visibility); });
-    if (result.status == PlatformResultStatus::success)
-    {
-        return 0;
-    }
-    if (result.status == PlatformResultStatus::already_running)
-    {
-        ReportError(AlreadyRunningMessage, true);
-        return 1;
-    }
-
-    ReportResultError(result, true);
-    return 1;
+    log_.AppendLine(message);
+    view_.log_text = log_.Text();
+    view_.removed_lines = log_.RemovedLines();
+    ++view_.log_revision;
 }
 
-int Application::SendWindowCommand(const WindowVisibility visibility)
+void Application::Stop() noexcept
 {
-    const PlatformResult result = platform_.SendWindowCommand(visibility);
-    if (result.status == PlatformResultStatus::success)
-    {
-        return 0;
-    }
-    if (result.status == PlatformResultStatus::not_running)
-    {
-        ReportError(NoReadyInstanceMessage, false);
-        return 1;
-    }
-
-    ReportResultError(result);
-    return 1;
+    stopped_ = true;
+    deadline_.reset();
+    pending_events_.clear();
+    // Native RequestExit cancels timers immediately, including during session shutdown in a modal menu loop.
+    platform_.RequestExit();
 }
 
-int Application::SendF13AfterDelay()
+void Application::HandleEvent(const ApplicationEvent& event)
 {
-    const PlatformResult reservation = platform_.ReserveSingleInstance();
-    if (reservation.status == PlatformResultStatus::already_running)
+    if (stopped_)
+        return;
+    if (event.kind == EventKind::quit)
     {
-        ReportError(
-            "Another instance of this application is already running in this interactive session. Close it before "
-            "sending F13.",
-            false);
-        return 1;
+        Stop();
+        return;
     }
-    if (reservation.status != PlatformResultStatus::success)
+    pending_events_.push_back(event);
+    if (processing_)
+        return;
+    processing_ = true;
+    try
     {
-        ReportResultError(reservation);
-        return 1;
+        while (!pending_events_.empty() && !stopped_)
+        {
+            const auto next = std::move(pending_events_.front());
+            pending_events_.pop_front();
+            ApplyEvent(next);
+            if (!stopped_)
+                platform_.Present(view_);
+        }
+        processing_ = false;
     }
-
-    platform_.WriteLine("F13 will be sent in 5 seconds. Focus the target application now.");
-    platform_.WaitFor(SendF13Delay);
-
-    const PlatformResult result = platform_.SendF13();
-    if (result.status != PlatformResultStatus::success)
+    catch (...)
     {
-        ReportResultError(result);
-        return 1;
+        processing_ = false;
+        Stop();
+        throw;
     }
-
-    return 0;
 }
 
-void Application::HandleHotkeyEvent(const HotkeyEvent& event)
+void Application::ApplyEvent(const ApplicationEvent& event)
 {
-    if (event.transition == KeyTransition::released)
+    switch (event.kind)
     {
+    case EventKind::initialized:
+        platform_.SetWindowVisible(false);
+        break;
+    case EventKind::show:
+        platform_.SetWindowVisible(true);
+        break;
+    case EventKind::hide:
+        platform_.SetWindowVisible(false);
+        break;
+    case EventKind::diagnostic:
+        WriteLine(event.text);
+        break;
+    case EventKind::delay_changed:
+        if (!deadline_)
+        {
+            view_.delay_text = event.text;
+            view_.send_enabled = ParseDelay(event.text).has_value();
+        }
+        break;
+    case EventKind::send_requested:
+        if (!deadline_)
+        {
+            const auto delay = ParseDelay(view_.delay_text);
+            if (delay)
+            {
+                deadline_ = platform_.Now() + *delay;
+                view_.delay_enabled = false;
+                view_.send_enabled = false;
+                WriteLine("F13 will be sent in " + std::to_string(delay->count()) +
+                          " seconds. Focus the target application now.");
+                UpdateCountdown();
+            }
+        }
+        break;
+    case EventKind::tick:
+        if (deadline_)
+            UpdateCountdown();
+        break;
+    case EventKind::hotkey_released:
         hotkey_is_pressed_ = false;
-        return;
-    }
-
-    if (hotkey_is_pressed_)
-    {
-        return;
-    }
-
-    hotkey_is_pressed_ = true;
-    const PlatformResult result = platform_.DoubleClick();
-    if (result.status == PlatformResultStatus::failure)
-    {
-        platform_.WriteLine(result.error_message);
-    }
-}
-
-void Application::HandleWindowVisibility(const WindowVisibility visibility)
-{
-    platform_.SetWindowVisibility(visibility);
-}
-
-void Application::ReportError(const std::string_view message, const bool wait_for_key)
-{
-    platform_.SetWindowVisibility(WindowVisibility::shown);
-    platform_.WriteLine(message);
-    if (wait_for_key)
-    {
-        platform_.WaitForKey();
+        break;
+    case EventKind::hotkey_pressed:
+        if (!hotkey_is_pressed_)
+        {
+            hotkey_is_pressed_ = true;
+            const auto result = platform_.DoubleClick();
+            if (!result.success)
+                WriteLine(result.error);
+        }
+        break;
+    case EventKind::quit:
+        break;
     }
 }
 
-void Application::ReportResultError(const PlatformResult& result, const bool wait_for_key)
+void Application::UpdateCountdown()
 {
-    if (result.status == PlatformResultStatus::failure)
+    const auto now = platform_.Now();
+    if (now >= *deadline_)
     {
-        ReportError(result.error_message, wait_for_key);
+        deadline_.reset(); // Consume before injecting input or processing any reentrant event.
+        (void)platform_.ScheduleTick(std::nullopt);
+        const auto result = platform_.SendF13();
+        WriteLine(result.success ? "F13 sent." : result.error);
     }
+    else
+    {
+        const auto seconds = std::chrono::ceil<std::chrono::seconds>(*deadline_ - now);
+        view_.send_caption = "Sending in " + std::to_string(seconds.count()) + " s";
+        const auto result = platform_.ScheduleTick(*deadline_ - (seconds - std::chrono::seconds(1)));
+        if (result.success)
+            return;
+        deadline_.reset();
+        (void)platform_.ScheduleTick(std::nullopt);
+        WriteLine(result.error);
+    }
+    view_.send_caption = "Send F13";
+    view_.delay_enabled = true;
+    view_.send_enabled = ParseDelay(view_.delay_text).has_value();
 }
 } // namespace double_click_hotkey

@@ -60,10 +60,21 @@ clang-format before configuration. Prettier formats documentation and configurat
 ## Repository layout
 
 - `src/main.cpp` creates the CMake-selected platform binding and runs the controller. Public contracts are in
-  `include/double_click_hotkey/`; portable launch parsing and orchestration live in `src/application/`.
-- `src/platform/windows/` implements console/control handling, instance commands, keyboard hooks and sending, mouse
-  input, and single-instance ownership.
-- `tests/application/` tests the core through a fake binding. `tests/main.test.cpp` supplies a fake platform factory;
-  `tests/CMakeLists.txt` builds the entrypoint under a test-only function name.
+  `include/double_click_hotkey/`; portable log retention, countdown state, and orchestration live in `src/application/`.
+- `src/platform/windows/` implements the native window, tray, DPI handling, Show-only instance activation, keyboard
+  hooks and sending, mouse input, and the monotonic clock.
+- `tests/application/` tests the core through the shared `fake_platform_binding.hpp`, without real sleeps or desktop
+  interaction. `tests/main.test.cpp` supplies a fake platform factory; `tests/CMakeLists.txt` builds the entrypoint
+  under a test-only function name.
 - `CMakeLists.txt` defines targets, GoogleTest, warnings, and size flags; `cmake/` holds formatting and toolchain setup.
   `package.json`, `scripts/cmake.mjs`, and `.prettier*` configure npm workflows and documentation formatting.
+
+## Icon and native resources
+
+`assets/icon.svg` is the original editable artwork. After editing it, run `npm run icon:convert` to regenerate the
+checked-in `assets/icon.ico` at 16, 20, 24, 32, 40, 48, 64, and 256 pixels. The converter is a development dependency;
+application builds use the checked-in ICO and require no Node.js runtime or image conversion.
+
+The Windows resource embeds the icon, version information, and an as-invoker Per-Monitor V2 manifest. CMake explicitly
+tracks these inputs so resource edits trigger incremental rebuilds. The executable uses the Windows GUI subsystem, while
+`src/main.cpp` stays platform neutral and takes no arguments.

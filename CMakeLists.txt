@@ -23,7 +23,7 @@ add_library(
     double_click_hotkey_core
     STATIC
         src/application/application.cpp
-        src/application/launch_command.cpp
+        src/application/log_buffer.cpp
 )
 add_library(DoubleClickHotkey::core ALIAS double_click_hotkey_core)
 
@@ -39,20 +39,22 @@ double_click_hotkey_enable_warnings(double_click_hotkey_core)
 
 if(DOUBLE_CLICK_HOTKEY_BUILD_APP)
     if(WIN32)
+        enable_language(RC)
         set(
             DOUBLE_CLICK_HOTKEY_PLATFORM_SOURCES
-            src/platform/windows/console.cpp
-            src/platform/windows/console_control_handler.cpp
+            src/platform/windows/clock.cpp
             src/platform/windows/input_injector.cpp
-            src/platform/windows/instance_command.cpp
             src/platform/windows/keyboard_hook.cpp
             src/platform/windows/keyboard_sender.cpp
+            src/platform/windows/main_window.cpp
             src/platform/windows/mouse.cpp
+            src/platform/windows/native.cpp
             src/platform/windows/platform_factory.cpp
             src/platform/windows/single_instance.cpp
+            src/platform/windows/tray_icon.cpp
             src/platform/windows/windows_platform_binding.cpp
         )
-        set(DOUBLE_CLICK_HOTKEY_PLATFORM_LIBRARIES advapi32 user32)
+        set(DOUBLE_CLICK_HOTKEY_PLATFORM_LIBRARIES advapi32 user32 gdi32 shell32 comctl32 mincore)
     else()
         message(FATAL_ERROR "No application platform binding is available for ${CMAKE_SYSTEM_NAME}")
     endif()
@@ -60,7 +62,10 @@ if(DOUBLE_CLICK_HOTKEY_BUILD_APP)
     add_library(double_click_hotkey_platform STATIC ${DOUBLE_CLICK_HOTKEY_PLATFORM_SOURCES})
     add_library(DoubleClickHotkey::platform ALIAS double_click_hotkey_platform)
     target_compile_features(double_click_hotkey_platform PUBLIC cxx_std_17)
-    target_compile_definitions(double_click_hotkey_platform PRIVATE NOMINMAX UNICODE WIN32_LEAN_AND_MEAN _UNICODE)
+    target_compile_definitions(
+        double_click_hotkey_platform
+        PRIVATE NOMINMAX UNICODE WIN32_LEAN_AND_MEAN _UNICODE _WIN32_WINNT=0x0A00 WINVER=0x0A00
+    )
     target_include_directories(double_click_hotkey_platform PRIVATE "${PROJECT_SOURCE_DIR}/src")
     target_link_libraries(
         double_click_hotkey_platform
@@ -70,7 +75,16 @@ if(DOUBLE_CLICK_HOTKEY_BUILD_APP)
     set_target_properties(double_click_hotkey_platform PROPERTIES CXX_EXTENSIONS OFF)
     double_click_hotkey_enable_warnings(double_click_hotkey_platform)
 
-    add_executable(double_click_hotkey src/main.cpp)
+    add_executable(double_click_hotkey WIN32 src/main.cpp src/platform/windows/double_click_hotkey.rc)
+    # Resource compilers do not reliably report these dependencies for incremental builds.
+    set_property(
+        SOURCE src/platform/windows/double_click_hotkey.rc
+        APPEND PROPERTY OBJECT_DEPENDS
+            "${PROJECT_SOURCE_DIR}/assets/icon.ico"
+            "${PROJECT_SOURCE_DIR}/src/platform/windows/double_click_hotkey.manifest"
+            "${PROJECT_SOURCE_DIR}/src/platform/windows/resource.h"
+    )
+    target_include_directories(double_click_hotkey PRIVATE "${PROJECT_SOURCE_DIR}/src/platform/windows")
     target_compile_features(double_click_hotkey PRIVATE cxx_std_17)
     target_link_libraries(double_click_hotkey PRIVATE DoubleClickHotkey::platform)
     set_target_properties(double_click_hotkey PROPERTIES CXX_EXTENSIONS OFF OUTPUT_NAME DoubleClickHotkey)
@@ -114,34 +128,39 @@ endif()
 set(
     DOUBLE_CLICK_HOTKEY_FORMAT_FILES
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/application.hpp"
-    "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/launch_command.hpp"
+    "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/log_buffer.hpp"
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/platform_binding.hpp"
     "${PROJECT_SOURCE_DIR}/include/double_click_hotkey/platform_factory.hpp"
     "${PROJECT_SOURCE_DIR}/src/application/application.cpp"
-    "${PROJECT_SOURCE_DIR}/src/application/launch_command.cpp"
+    "${PROJECT_SOURCE_DIR}/src/application/log_buffer.cpp"
     "${PROJECT_SOURCE_DIR}/src/main.cpp"
-    "${PROJECT_SOURCE_DIR}/src/platform/windows/console.cpp"
-    "${PROJECT_SOURCE_DIR}/src/platform/windows/console.hpp"
-    "${PROJECT_SOURCE_DIR}/src/platform/windows/console_control_handler.cpp"
-    "${PROJECT_SOURCE_DIR}/src/platform/windows/console_control_handler.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/clock.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/clock.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/input_injector.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/input_injector.hpp"
-    "${PROJECT_SOURCE_DIR}/src/platform/windows/instance_command.cpp"
-    "${PROJECT_SOURCE_DIR}/src/platform/windows/instance_command.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/input_tag.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_hook.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_hook.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_sender.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/keyboard_sender.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/main_window.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/main_window.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/mouse.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/mouse.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/named_object_security.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/native.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/native.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/platform_factory.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/resource.h"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/single_instance.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/single_instance.hpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/tray_icon.cpp"
+    "${PROJECT_SOURCE_DIR}/src/platform/windows/tray_icon.hpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/windows_platform_binding.cpp"
     "${PROJECT_SOURCE_DIR}/src/platform/windows/windows_platform_binding.hpp"
     "${PROJECT_SOURCE_DIR}/tests/application/application.test.cpp"
-    "${PROJECT_SOURCE_DIR}/tests/application/launch_command.test.cpp"
+    "${PROJECT_SOURCE_DIR}/tests/application/fake_platform_binding.hpp"
+    "${PROJECT_SOURCE_DIR}/tests/application/log_buffer.test.cpp"
     "${PROJECT_SOURCE_DIR}/tests/main.test.cpp"
 )
 include(cmake/ClangFormat.cmake)

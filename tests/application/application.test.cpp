@@ -1,387 +1,316 @@
 #include "double_click_hotkey/application.hpp"
-
+#include "fake_platform_binding.hpp"
 #include <gtest/gtest.h>
-
-#include <chrono>
-#include <initializer_list>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
+#include <stdexcept>
 
 namespace double_click_hotkey
 {
-namespace
+using namespace std::chrono_literals;
+
+TEST(DelayTest, AcceptsWholeSecondsInRange)
 {
-class FakePlatformBinding final : public PlatformBinding
-{
-  public:
-    PlatformResult RunService(HotkeyEventHandler hotkey_handler, WindowVisibilityHandler visibility_handler) override
-    {
-        operations.emplace_back("run service");
-        ++run_service_count;
-        for (const HotkeyEvent& event : hotkey_events)
-        {
-            hotkey_handler(event);
-        }
-        for (const WindowVisibility visibility : received_window_commands)
-        {
-            visibility_handler(visibility);
-        }
-        return run_service_result;
-    }
-
-    PlatformResult ReserveSingleInstance() override
-    {
-        operations.emplace_back("reserve instance");
-        ++reserve_single_instance_count;
-        return reserve_single_instance_result;
-    }
-
-    PlatformResult SendWindowCommand(const WindowVisibility visibility) override
-    {
-        operations.emplace_back("send window command");
-        sent_window_commands.push_back(visibility);
-        return send_window_command_result;
-    }
-
-    void SetWindowVisibility(const WindowVisibility visibility) override
-    {
-        operations.emplace_back("set window visibility");
-        window_visibility_changes.push_back(visibility);
-    }
-
-    void WriteLine(const std::string_view message) override
-    {
-        operations.emplace_back("write line");
-        written_lines.emplace_back(message);
-    }
-
-    void WaitFor(const std::chrono::milliseconds duration) override
-    {
-        operations.emplace_back("wait");
-        waits.push_back(duration);
-    }
-
-    void WaitForKey() override
-    {
-        operations.emplace_back("wait for key");
-        ++wait_for_key_count;
-    }
-
-    PlatformResult SendF13() override
-    {
-        operations.emplace_back("send F13");
-        ++send_f13_count;
-        return send_f13_result;
-    }
-
-    PlatformResult DoubleClick() override
-    {
-        operations.emplace_back("double click");
-        ++double_click_count;
-        return double_click_result;
-    }
-
-    PlatformResult run_service_result;
-    PlatformResult reserve_single_instance_result;
-    PlatformResult send_window_command_result;
-    PlatformResult send_f13_result;
-    PlatformResult double_click_result;
-    std::vector<HotkeyEvent> hotkey_events;
-    std::vector<WindowVisibility> received_window_commands;
-    std::vector<WindowVisibility> sent_window_commands;
-    std::vector<WindowVisibility> window_visibility_changes;
-    std::vector<std::string> written_lines;
-    std::vector<std::chrono::milliseconds> waits;
-    std::vector<std::string> operations;
-    int run_service_count = 0;
-    int reserve_single_instance_count = 0;
-    int send_f13_count = 0;
-    int double_click_count = 0;
-    int wait_for_key_count = 0;
-};
-
-void ExpectErrorReported(const FakePlatformBinding& platform,
-                         const std::initializer_list<std::string_view> expected_lines,
-                         const std::initializer_list<WindowVisibility> expected_visibility_changes,
-                         const std::initializer_list<std::string_view> expected_operations, const bool waited_for_key)
-{
-    std::vector<std::string> lines;
-    lines.reserve(expected_lines.size());
-    for (const std::string_view line : expected_lines)
-    {
-        lines.emplace_back(line);
-    }
-
-    const std::vector<WindowVisibility> visibility_changes(expected_visibility_changes);
-
-    std::vector<std::string> operations;
-    operations.reserve(expected_operations.size());
-    for (const std::string_view operation : expected_operations)
-    {
-        operations.emplace_back(operation);
-    }
-
-    EXPECT_EQ(platform.written_lines, lines);
-    EXPECT_EQ(platform.window_visibility_changes, visibility_changes);
-    EXPECT_EQ(platform.operations, operations);
-    EXPECT_EQ(platform.wait_for_key_count, waited_for_key ? 1 : 0);
+    EXPECT_EQ(ParseDelay("1"), 1s);
+    EXPECT_EQ(ParseDelay("5"), 5s);
+    EXPECT_EQ(ParseDelay("3600"), 3600s);
+    EXPECT_EQ(ParseDelay("005"), 5s);
 }
-
-TEST(ApplicationTest, RunsTheServiceAndHidesItsWindow)
+TEST(DelayTest, RejectsInvalidOrOverflowingValues)
 {
-    FakePlatformBinding platform;
-    Application application(platform);
-
-    EXPECT_EQ(application.Run(), 0);
-    EXPECT_EQ(platform.run_service_count, 1);
-    EXPECT_EQ(platform.window_visibility_changes, (std::vector<WindowVisibility>{WindowVisibility::hidden}));
-    EXPECT_EQ(platform.written_lines.size(), 0U);
-    EXPECT_EQ(platform.wait_for_key_count, 0);
-    EXPECT_EQ(platform.operations, (std::vector<std::string>{"set window visibility", "run service"}));
+    for (auto text : {"", "0", "3601", "-1", "+5", "1.5", " 5", "5 ", "5s", "4294967296", "999999999999999999999"})
+        EXPECT_FALSE(ParseDelay(text)) << text;
 }
-
-TEST(ApplicationTest, RunsTheServiceWithItsWindowShownWhenRequested)
+TEST(ApplicationTest, StartsHiddenWithFiveSecondDelay)
 {
-    FakePlatformBinding platform;
-    Application application(platform, LaunchCommand::start_shown);
-
-    EXPECT_EQ(application.Run(), 0);
-    EXPECT_EQ(platform.run_service_count, 1);
-    EXPECT_EQ(platform.window_visibility_changes, (std::vector<WindowVisibility>{WindowVisibility::shown}));
-    EXPECT_EQ(platform.written_lines.size(), 0U);
-    EXPECT_EQ(platform.wait_for_key_count, 0);
-    EXPECT_EQ(platform.operations, (std::vector<std::string>{"set window visibility", "run service"}));
+    FakePlatformBinding p;
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+    EXPECT_EQ(p.visibility, std::vector<bool>{false});
+    EXPECT_EQ(p.view.delay_text, "5");
+    EXPECT_EQ(p.view.log_text, "");
+    EXPECT_TRUE(p.view.send_enabled);
+    EXPECT_EQ(p.exit_count, 1);
 }
-
-TEST(ApplicationTest, ReportsWhenTheServiceIsAlreadyRunning)
+TEST(ApplicationTest, DuplicateActivationReturnsSuccessWithoutStartingService)
 {
-    FakePlatformBinding platform;
-    platform.run_service_result.status = PlatformResultStatus::already_running;
-    Application application(platform);
-
-    EXPECT_EQ(application.Run(), 1);
-    EXPECT_EQ(platform.run_service_count, 1);
-    ExpectErrorReported(
-        platform, {"Another instance of this application is already running in this interactive session."},
-        {WindowVisibility::hidden, WindowVisibility::shown},
-        {"set window visibility", "run service", "set window visibility", "write line", "wait for key"}, true);
+    FakePlatformBinding p;
+    p.duplicate = true;
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+    EXPECT_EQ(p.present_count, 0);
+    EXPECT_TRUE(p.errors.empty());
 }
-
-TEST(ApplicationTest, ReportsAServiceFailure)
+TEST(ApplicationTest, ReportsStartupFailure)
 {
-    FakePlatformBinding platform;
-    platform.run_service_result = {PlatformResultStatus::failure, "service failed"};
-    Application application(platform);
-
-    EXPECT_EQ(application.Run(), 1);
-    EXPECT_EQ(platform.run_service_count, 1);
-    ExpectErrorReported(platform, {"service failed"}, {WindowVisibility::hidden, WindowVisibility::shown},
-                        {"set window visibility", "run service", "set window visibility", "write line", "wait for key"},
-                        true);
+    FakePlatformBinding p;
+    p.service_result = {false, "Setup failed"};
+    Application app(p);
+    EXPECT_EQ(app.Run(), 1);
+    EXPECT_EQ(p.errors, std::vector<std::string>{"Setup failed"});
 }
-
-TEST(ApplicationTest, AppliesWindowCommandsReceivedByTheService)
+TEST(ApplicationTest, ReportsFailureAfterInitializationAndStops)
 {
-    FakePlatformBinding platform;
-    platform.received_window_commands = {WindowVisibility::shown, WindowVisibility::hidden};
-    Application application(platform);
-
-    EXPECT_EQ(application.Run(), 0);
-    EXPECT_EQ(
-        platform.window_visibility_changes,
-        (std::vector<WindowVisibility>{WindowVisibility::hidden, WindowVisibility::shown, WindowVisibility::hidden}));
-    EXPECT_EQ(platform.operations, (std::vector<std::string>{"set window visibility", "run service",
-                                                             "set window visibility", "set window visibility"}));
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) { f.service_result = {false, "Event loop failed"}; };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 1);
+    EXPECT_EQ(p.view.log_text, "Event loop failed");
+    EXPECT_EQ(p.errors, std::vector<std::string>{"Event loop failed"});
+    EXPECT_EQ(p.exit_count, 1);
+    EXPECT_FALSE(p.handler_);
 }
-
-TEST(ApplicationTest, SendsTheRequestedWindowCommand)
+TEST(ApplicationTest, PresentationFailureCancelsCountdownAndDetachesHandler)
 {
-    for (const auto& [launch_command, expected_visibility] :
-         {std::pair{LaunchCommand::show_window, WindowVisibility::shown},
-          std::pair{LaunchCommand::hide_window, WindowVisibility::hidden}})
-    {
-        SCOPED_TRACE(static_cast<int>(launch_command));
-        FakePlatformBinding platform;
-        Application application(platform, launch_command);
-
-        EXPECT_EQ(application.Run(), 0);
-        EXPECT_EQ(platform.sent_window_commands, (std::vector<WindowVisibility>{expected_visibility}));
-        EXPECT_EQ(platform.run_service_count, 0);
-        EXPECT_EQ(platform.window_visibility_changes.size(), 0U);
-        EXPECT_EQ(platform.written_lines.size(), 0U);
-        EXPECT_EQ(platform.operations, (std::vector<std::string>{"send window command"}));
-    }
-}
-
-TEST(ApplicationTest, ReportsWhenAWindowCommandHasNoRunningReceiver)
-{
-    FakePlatformBinding platform;
-    platform.send_window_command_result.status = PlatformResultStatus::not_running;
-    Application application(platform, LaunchCommand::show_window);
-
-    EXPECT_EQ(application.Run(), 1);
-    EXPECT_EQ(platform.sent_window_commands, (std::vector<WindowVisibility>{WindowVisibility::shown}));
-    ExpectErrorReported(platform, {"No running instance in this interactive session is ready to receive commands."},
-                        {WindowVisibility::shown}, {"send window command", "set window visibility", "write line"},
-                        false);
-}
-
-TEST(ApplicationTest, ReportsAWindowCommandFailure)
-{
-    FakePlatformBinding platform;
-    platform.send_window_command_result = {PlatformResultStatus::failure, "command failed"};
-    Application application(platform, LaunchCommand::hide_window);
-
-    EXPECT_EQ(application.Run(), 1);
-    EXPECT_EQ(platform.sent_window_commands, (std::vector<WindowVisibility>{WindowVisibility::hidden}));
-    ExpectErrorReported(platform, {"command failed"}, {WindowVisibility::shown},
-                        {"send window command", "set window visibility", "write line"}, false);
-}
-
-TEST(ApplicationTest, ReservesTheInstanceAndSendsF13AfterFiveSeconds)
-{
-    FakePlatformBinding platform;
-    Application application(platform, LaunchCommand::send_f13);
-
-    EXPECT_EQ(application.Run(), 0);
-    EXPECT_EQ(platform.reserve_single_instance_count, 1);
-    EXPECT_EQ(platform.written_lines,
-              (std::vector<std::string>{"F13 will be sent in 5 seconds. Focus the target application now."}));
-    EXPECT_EQ(platform.waits, (std::vector<std::chrono::milliseconds>{std::chrono::seconds(5)}));
-    EXPECT_EQ(platform.send_f13_count, 1);
-    EXPECT_EQ(platform.operations, (std::vector<std::string>{"reserve instance", "write line", "wait", "send F13"}));
-}
-
-TEST(ApplicationTest, DoesNotSendF13WhileTheServiceIsRunning)
-{
-    FakePlatformBinding platform;
-    platform.reserve_single_instance_result.status = PlatformResultStatus::already_running;
-    Application application(platform, LaunchCommand::send_f13);
-
-    EXPECT_EQ(application.Run(), 1);
-    EXPECT_EQ(platform.reserve_single_instance_count, 1);
-    EXPECT_EQ(platform.waits.size(), 0U);
-    EXPECT_EQ(platform.send_f13_count, 0);
-    ExpectErrorReported(platform,
-                        {"Another instance of this application is already running in this interactive session. Close "
-                         "it before sending F13."},
-                        {WindowVisibility::shown}, {"reserve instance", "set window visibility", "write line"}, false);
-}
-
-TEST(ApplicationTest, ReportsAnInstanceReservationFailureWithoutSendingF13)
-{
-    FakePlatformBinding platform;
-    platform.reserve_single_instance_result = {PlatformResultStatus::failure, "reservation failed"};
-    Application application(platform, LaunchCommand::send_f13);
-
-    EXPECT_EQ(application.Run(), 1);
-    EXPECT_EQ(platform.reserve_single_instance_count, 1);
-    EXPECT_EQ(platform.waits.size(), 0U);
-    EXPECT_EQ(platform.send_f13_count, 0);
-    ExpectErrorReported(platform, {"reservation failed"}, {WindowVisibility::shown},
-                        {"reserve instance", "set window visibility", "write line"}, false);
-}
-
-TEST(ApplicationTest, ReportsAnF13InjectionFailure)
-{
-    FakePlatformBinding platform;
-    platform.send_f13_result = {PlatformResultStatus::failure, "F13 failed"};
-    Application application(platform, LaunchCommand::send_f13);
-
-    EXPECT_EQ(application.Run(), 1);
-    EXPECT_EQ(platform.reserve_single_instance_count, 1);
-    EXPECT_EQ(platform.waits, (std::vector<std::chrono::milliseconds>{std::chrono::seconds(5)}));
-    EXPECT_EQ(platform.send_f13_count, 1);
-    ExpectErrorReported(platform, {"F13 will be sent in 5 seconds. Focus the target application now.", "F13 failed"},
-                        {WindowVisibility::shown},
-                        {"reserve instance", "write line", "wait", "send F13", "set window visibility", "write line"},
-                        false);
-}
-
-TEST(ApplicationTest, ReportsUsageForAnInvalidLaunchCommand)
-{
-    FakePlatformBinding platform;
-    Application application(platform, LaunchCommand::invalid);
-
-    EXPECT_EQ(application.Run(), 1);
-    EXPECT_EQ(platform.run_service_count, 0);
-    EXPECT_EQ(platform.sent_window_commands.size(), 0U);
-    EXPECT_EQ(platform.reserve_single_instance_count, 0);
-    ExpectErrorReported(platform, {"Usage: DoubleClickHotkey [--start-shown | --show | --hide | --send-f13]"},
-                        {WindowVisibility::shown}, {"set window visibility", "write line"}, false);
-}
-
-TEST(ApplicationTest, ReportsUsageForAnUnrecognizedLaunchCommand)
-{
-    FakePlatformBinding platform;
-    Application application(platform, static_cast<LaunchCommand>(-1));
-
-    EXPECT_EQ(application.Run(), 1);
-    EXPECT_EQ(platform.run_service_count, 0);
-    EXPECT_EQ(platform.sent_window_commands.size(), 0U);
-    EXPECT_EQ(platform.reserve_single_instance_count, 0);
-    ExpectErrorReported(platform, {"Usage: DoubleClickHotkey [--start-shown | --show | --hide | --send-f13]"},
-                        {WindowVisibility::shown}, {"set window visibility", "write line"}, false);
-}
-
-TEST(ApplicationTest, DoubleClicksForAKeyPress)
-{
-    FakePlatformBinding platform;
-    platform.hotkey_events.push_back({KeyTransition::pressed});
-    Application application(platform);
-
-    EXPECT_EQ(application.Run(), 0);
-
-    EXPECT_EQ(platform.double_click_count, 1);
-    EXPECT_EQ(platform.written_lines.size(), 0U);
-    EXPECT_EQ(platform.operations, (std::vector<std::string>{"set window visibility", "run service", "double click"}));
-}
-
-TEST(ApplicationTest, DoubleClicksOnlyOncePerPhysicalPress)
-{
-    FakePlatformBinding platform;
-    platform.hotkey_events = {
-        {KeyTransition::pressed},  {KeyTransition::pressed}, {KeyTransition::pressed},
-        {KeyTransition::released}, {KeyTransition::pressed}, {KeyTransition::released},
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) { f.Emit(EventKind::send_requested); };
+    p.on_present = [](auto& f) {
+        if (!f.view.delay_enabled)
+            throw std::runtime_error("Presentation failed");
     };
-    Application application(platform);
-
-    EXPECT_EQ(application.Run(), 0);
-
-    EXPECT_EQ(platform.double_click_count, 2);
-    EXPECT_EQ(platform.operations,
-              (std::vector<std::string>{"set window visibility", "run service", "double click", "double click"}));
+    Application app(p);
+    EXPECT_EQ(app.Run(), 1);
+    EXPECT_EQ(p.errors, std::vector<std::string>{"Presentation failed"});
+    EXPECT_EQ(p.exit_count, 1);
+    EXPECT_EQ(p.send_count, 0);
+    EXPECT_FALSE(p.timer);
+    EXPECT_FALSE(p.handler_);
 }
-
-TEST(ApplicationTest, DoesNotDoubleClickForAHotkeyRelease)
+TEST(ApplicationTest, ShowAndCloseOnlyChangeVisibility)
 {
-    FakePlatformBinding platform;
-    platform.hotkey_events.push_back({KeyTransition::released});
-    Application application(platform);
-
-    EXPECT_EQ(application.Run(), 0);
-
-    EXPECT_EQ(platform.double_click_count, 0);
-    EXPECT_EQ(platform.operations, (std::vector<std::string>{"set window visibility", "run service"}));
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) {
+        f.Emit(EventKind::show);
+        f.Emit(EventKind::hide);
+        EXPECT_EQ(f.exit_count, 0);
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+    EXPECT_EQ(p.visibility, (std::vector<bool>{false, true, false}));
 }
-
-TEST(ApplicationTest, LogsADoubleClickInjectionFailureWithoutShowingTheWindow)
+TEST(ApplicationTest, LogsErrorsWhileHiddenAndRetainsOnlyNewestLines)
 {
-    FakePlatformBinding platform;
-    platform.hotkey_events.push_back({KeyTransition::pressed});
-    platform.double_click_result = {PlatformResultStatus::failure, "double-click failed"};
-    Application application(platform);
-
-    EXPECT_EQ(application.Run(), 0);
-
-    EXPECT_EQ(platform.double_click_count, 1);
-    EXPECT_EQ(platform.written_lines, (std::vector<std::string>{"double-click failed"}));
-    EXPECT_EQ(platform.window_visibility_changes, (std::vector<WindowVisibility>{WindowVisibility::hidden}));
-    EXPECT_EQ(platform.wait_for_key_count, 0);
-    EXPECT_EQ(platform.operations,
-              (std::vector<std::string>{"set window visibility", "run service", "double click", "write line"}));
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) {
+        for (int index = 0; index < 501; ++index)
+            f.Emit(EventKind::diagnostic, std::to_string(index));
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+    EXPECT_EQ(p.visibility, std::vector<bool>{false});
+    EXPECT_EQ(p.view.removed_lines, 1U);
+    EXPECT_EQ(p.view.log_text.substr(0, 4), "1\n2\n");
 }
-} // namespace
+TEST(ApplicationTest, InvalidDelayDisablesSendingAndCanBeCorrected)
+{
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) {
+        f.Emit(EventKind::delay_changed, "");
+        EXPECT_FALSE(f.view.send_enabled);
+        f.Emit(EventKind::send_requested);
+        EXPECT_FALSE(f.timer);
+        f.Emit(EventKind::delay_changed, "3600");
+        EXPECT_TRUE(f.view.send_enabled);
+        f.Emit(EventKind::send_requested);
+        EXPECT_EQ(f.view.send_caption, "Sending in 3600 s");
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+    EXPECT_EQ(p.send_count, 0);
+}
+TEST(ApplicationTest, SendsOnceAtDeadlineWithoutBlocking)
+{
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) {
+        f.Emit(EventKind::send_requested);
+        EXPECT_EQ(f.timer, 1s);
+        EXPECT_FALSE(f.view.delay_enabled);
+        EXPECT_FALSE(f.view.send_enabled);
+        EXPECT_EQ(f.view.send_caption, "Sending in 5 s");
+        EXPECT_EQ(f.send_count, 0);
+        f.now = 4999ms;
+        f.Emit(EventKind::tick);
+        EXPECT_EQ(f.send_count, 0);
+        EXPECT_EQ(f.timer, 5s);
+        EXPECT_EQ(f.view.send_caption, "Sending in 1 s");
+        f.now = 5s;
+        f.Emit(EventKind::tick);
+        f.Emit(EventKind::tick);
+        EXPECT_EQ(f.send_count, 1);
+        EXPECT_FALSE(f.timer);
+        EXPECT_TRUE(f.view.delay_enabled);
+        EXPECT_TRUE(f.view.send_enabled);
+        EXPECT_EQ(f.view.send_caption, "Send F13");
+        EXPECT_EQ(f.view.log_text, "F13 will be sent in 5 seconds. Focus the target application now.\nF13 sent.");
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+    EXPECT_EQ(p.visibility, std::vector<bool>{false});
+}
+TEST(ApplicationTest, CapturesSelectedDelayAndIgnoresRepeatedRequests)
+{
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) {
+        f.now = 10s;
+        f.Emit(EventKind::delay_changed, "2");
+        f.Emit(EventKind::send_requested);
+        f.now = 11s;
+        f.Emit(EventKind::delay_changed, "100");
+        f.Emit(EventKind::send_requested);
+        EXPECT_EQ(f.view.delay_text, "2");
+        f.Emit(EventKind::tick);
+        EXPECT_EQ(f.timer, 12s);
+        f.now = 12s;
+        f.Emit(EventKind::tick);
+        EXPECT_EQ(f.send_count, 1);
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+}
+TEST(ApplicationTest, HiddenCountdownContinuesAndOverdueSendRunsOnceAfterResume)
+{
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) {
+        f.Emit(EventKind::send_requested);
+        f.Emit(EventKind::hide);
+        f.now = 1h;
+        f.Emit(EventKind::tick);
+        f.Emit(EventKind::tick);
+        EXPECT_EQ(f.send_count, 1);
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+    EXPECT_EQ(p.visibility, (std::vector<bool>{false, false}));
+}
+TEST(ApplicationTest, TimerFailureRestoresControlsWithoutSending)
+{
+    FakePlatformBinding p;
+    p.timer_result = {false, "Timer failed"};
+    p.run_action = [](auto& f) {
+        f.Emit(EventKind::send_requested);
+        EXPECT_TRUE(f.view.send_enabled);
+        EXPECT_TRUE(f.view.delay_enabled);
+        EXPECT_FALSE(f.timer);
+        EXPECT_NE(f.view.log_text.find("Timer failed"), std::string::npos);
+        f.now = 10s;
+        f.Emit(EventKind::tick);
+        EXPECT_EQ(f.send_count, 0);
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+}
+TEST(ApplicationTest, TimerRearmFailureCancelsThePendingSend)
+{
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) {
+        f.Emit(EventKind::send_requested);
+        f.timer_result = {false, "Rearm failed"};
+        f.now = 1s;
+        f.Emit(EventKind::tick);
+        EXPECT_TRUE(f.view.send_enabled);
+        f.now = 10s;
+        f.Emit(EventKind::tick);
+        EXPECT_EQ(f.send_count, 0);
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+}
+TEST(ApplicationTest, InjectionFailureIsLoggedAndAllowsAnotherAttempt)
+{
+    FakePlatformBinding p;
+    p.send_result = {false, "F13 send failed; release failed"};
+    p.run_action = [](auto& f) {
+        f.Emit(EventKind::send_requested);
+        f.now = 5s;
+        f.Emit(EventKind::tick);
+        EXPECT_TRUE(f.view.send_enabled);
+        EXPECT_NE(f.view.log_text.find("F13 send failed; release failed"), std::string::npos);
+        f.Emit(EventKind::send_requested);
+        EXPECT_FALSE(f.view.send_enabled);
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+}
+TEST(ApplicationTest, QuitCancelsCountdownAndIgnoresLaterEvents)
+{
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) {
+        f.Emit(EventKind::send_requested);
+        f.Emit(EventKind::quit);
+        EXPECT_FALSE(f.timer);
+        f.now = 10s;
+        f.Emit(EventKind::tick);
+        f.Emit(EventKind::send_requested);
+        f.Emit(EventKind::hotkey_pressed);
+        EXPECT_EQ(f.send_count, 0);
+        EXPECT_EQ(f.click_count, 0);
+        EXPECT_EQ(f.exit_count, 1);
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+}
+TEST(ApplicationTest, DoubleClicksOncePerPressEvenDuringCountdown)
+{
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) {
+        f.Emit(EventKind::send_requested);
+        f.Emit(EventKind::hotkey_released);
+        f.Emit(EventKind::hotkey_pressed);
+        f.Emit(EventKind::hotkey_pressed);
+        f.Emit(EventKind::hotkey_released);
+        f.Emit(EventKind::hotkey_pressed);
+        EXPECT_EQ(f.click_count, 2);
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+}
+TEST(ApplicationTest, DoubleClickFailureDoesNotShowHiddenWindow)
+{
+    FakePlatformBinding p;
+    p.click_result = {false, "Double-click failed"};
+    p.run_action = [](auto& f) { f.Emit(EventKind::hotkey_pressed); };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+    EXPECT_EQ(p.view.log_text, "Double-click failed");
+    EXPECT_EQ(p.visibility, std::vector<bool>{false});
+}
+TEST(ApplicationTest, ReentrantPresentationEventsAreQueued)
+{
+    FakePlatformBinding p;
+    bool emitted = false;
+    p.on_present = [&emitted](auto& f) {
+        if (!emitted)
+        {
+            emitted = true;
+            f.Emit(EventKind::diagnostic, "Nested event");
+            EXPECT_TRUE(f.view.log_text.empty());
+        }
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+    EXPECT_EQ(p.view.log_text, "Nested event");
+}
+TEST(ApplicationTest, ReentrantQuitCancelsImmediately)
+{
+    FakePlatformBinding p;
+    p.on_present = [](auto& f) {
+        f.Emit(EventKind::send_requested);
+        f.Emit(EventKind::quit);
+        EXPECT_EQ(f.exit_count, 1);
+    };
+    Application app(p);
+    EXPECT_EQ(app.Run(), 0);
+    EXPECT_EQ(p.exit_count, 1);
+    EXPECT_TRUE(p.scheduled.empty());
+}
+TEST(ApplicationTest, DelayResetsInANewApplication)
+{
+    FakePlatformBinding p;
+    p.run_action = [](auto& f) { f.Emit(EventKind::delay_changed, "25"); };
+    Application first(p);
+    EXPECT_EQ(first.Run(), 0);
+    EXPECT_EQ(p.view.delay_text, "25");
+    FakePlatformBinding other;
+    Application second(other);
+    EXPECT_EQ(second.Run(), 0);
+    EXPECT_EQ(other.view.delay_text, "5");
+}
 } // namespace double_click_hotkey

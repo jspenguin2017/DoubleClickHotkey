@@ -9,7 +9,7 @@ add_executable(
     double_click_hotkey_tests
     $<TARGET_OBJECTS:double_click_hotkey_main_for_tests>
     application/application.test.cpp
-    application/launch_command.test.cpp
+    application/log_buffer.test.cpp
     main.test.cpp
 )
 target_compile_features(double_click_hotkey_tests PRIVATE cxx_std_17)

@@ -1,28 +1,33 @@
 #pragma once
 
-#include "double_click_hotkey/launch_command.hpp"
+#include "double_click_hotkey/log_buffer.hpp"
 #include "double_click_hotkey/platform_binding.hpp"
+
+#include <deque>
 
 namespace double_click_hotkey
 {
+[[nodiscard]] std::optional<std::chrono::seconds> ParseDelay(std::string_view text) noexcept;
+
 class Application
 {
   public:
-    explicit Application(PlatformBinding& platform, LaunchCommand launch_command = LaunchCommand::run) noexcept;
-
+    explicit Application(PlatformBinding& platform);
     [[nodiscard]] int Run();
 
   private:
-    [[nodiscard]] int RunService(WindowVisibility initial_visibility);
-    [[nodiscard]] int SendWindowCommand(WindowVisibility visibility);
-    [[nodiscard]] int SendF13AfterDelay();
-    void HandleHotkeyEvent(const HotkeyEvent& event);
-    void HandleWindowVisibility(WindowVisibility visibility);
-    void ReportError(std::string_view message, bool wait_for_key);
-    void ReportResultError(const PlatformResult& result, bool wait_for_key = false);
-
+    void HandleEvent(const ApplicationEvent& event);
+    void ApplyEvent(const ApplicationEvent& event);
+    void WriteLine(std::string_view message);
+    void UpdateCountdown();
+    void Stop() noexcept;
     PlatformBinding& platform_;
-    LaunchCommand launch_command_;
+    LogBuffer log_;
+    ViewState view_;
+    std::optional<ElapsedTime> deadline_;
+    std::deque<ApplicationEvent> pending_events_;
+    bool processing_ = false;
+    bool stopped_ = false;
     bool hotkey_is_pressed_ = false;
 };
 } // namespace double_click_hotkey
