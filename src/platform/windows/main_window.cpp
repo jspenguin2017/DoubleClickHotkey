@@ -144,7 +144,7 @@ void MainWindow::Layout()
     const int height = Scale(28, dpi);
     const int row = client.bottom - margin - height;
     MoveWindow(log_, margin, margin, std::max(1L, client.right - 2 * margin), std::max(1, row - 2 * margin), TRUE);
-    MoveWindow(delay_label_, margin, row + Scale(5, dpi), Scale(112, dpi), height, TRUE);
+    MoveWindow(delay_label_, margin + Scale(2, dpi), row + Scale(5, dpi), Scale(112, dpi), height, TRUE);
     MoveWindow(delay_, margin + Scale(116, dpi), row, Scale(72, dpi), height, TRUE);
     MoveWindow(send_, client.right - margin - Scale(180, dpi), row, Scale(180, dpi), height, TRUE);
 }
