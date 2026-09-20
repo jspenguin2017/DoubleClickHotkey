@@ -75,6 +75,10 @@ clang-format before configuration. Prettier formats documentation and configurat
 checked-in `assets/icon.ico` at 16, 20, 24, 32, 40, 48, 64, and 256 pixels. The converter is a development dependency;
 application builds use the checked-in ICO and require no Node.js runtime or image conversion.
 
+The cursor tail is centered on the angle bisector through the tip `(14, 13)`. Its direction is proportional to
+`(0, 1) + (32, 23) / sqrt(1553)`, the sum of the two outer pointer edges' unit vectors. Keep the tail sides parallel to
+this direction and the end cap perpendicular; the tail width is `sqrt(80)` SVG units.
+
 The Windows resource embeds the icon, version information, and an as-invoker Per-Monitor V2 manifest. CMake explicitly
 tracks these inputs so resource edits trigger incremental rebuilds. The executable uses the Windows GUI subsystem, while
 `src/main.cpp` stays platform neutral and takes no arguments.

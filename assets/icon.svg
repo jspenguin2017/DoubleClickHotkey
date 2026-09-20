@@ -3,5 +3,11 @@
   <desc id="desc">A cyan mouse pointer with two amber click arcs on a midnight-blue rounded square.</desc>
   <rect width="64" height="64" rx="12" fill="#142638" />
   <path d="M34 9a22 22 0 0 1 22 22M34 18a13 13 0 0 1 13 13" fill="none" stroke="#ffc45c" stroke-width="5" stroke-linecap="round" />
-  <path d="M14 13v37l10-10 8 15 8-4-8-15h14Z" fill="#67e8f9" stroke="#142638" stroke-width="3" stroke-linejoin="round" />
+  <path
+    d="M14 13V50L23.219031 40.780969 30.840818 55.645390 38.799803 51.564390 30.819103 36H46Z"
+    fill="#67e8f9"
+    stroke="#142638"
+    stroke-width="3"
+    stroke-linejoin="round"
+  />
 </svg>
