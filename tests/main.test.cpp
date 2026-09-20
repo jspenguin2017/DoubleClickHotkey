@@ -9,31 +9,54 @@ namespace double_click_hotkey
 namespace
 {
 PlatformResult service_result;
-int created = 0;
-int initialized = 0;
+std::vector<std::string> lifecycle;
+
+class EntrypointPlatformBinding : public FakePlatformBinding
+{
+  public:
+    ~EntrypointPlatformBinding() override
+    {
+        lifecycle.emplace_back("destroyed");
+    }
+    PlatformResult RunService(EventHandler handler) override
+    {
+        lifecycle.emplace_back("run");
+        return FakePlatformBinding::RunService(std::move(handler));
+    }
+};
+
+class MainTest : public testing::Test
+{
+  protected:
+    void SetUp() override
+    {
+        service_result = {};
+        lifecycle.clear();
+    }
+    void TearDown() override
+    {
+        service_result = {};
+        lifecycle.clear();
+    }
+};
 } // namespace
 std::unique_ptr<PlatformBinding> CreatePlatformBinding()
 {
-    ++created;
-    auto fake = std::make_unique<FakePlatformBinding>();
+    lifecycle.emplace_back("created");
+    auto fake = std::make_unique<EntrypointPlatformBinding>();
     fake->service_result = service_result;
-    fake->run_action = [](auto&) { ++initialized; };
+    fake->run_action = [](auto&) { lifecycle.emplace_back("initialized"); };
     return fake;
 }
-TEST(MainTest, RunsThePlatformNeutralArgumentFreeEntrypoint)
+TEST_F(MainTest, RunsThePlatformNeutralEntrypointAndReleasesItsBinding)
 {
-    service_result = {};
-    created = initialized = 0;
     EXPECT_EQ(DoubleClickHotkeyMain(), 0);
-    EXPECT_EQ(created, 1);
-    EXPECT_EQ(initialized, 1);
+    EXPECT_EQ(lifecycle, (std::vector<std::string>{"created", "run", "initialized", "destroyed"}));
 }
-TEST(MainTest, ReturnsApplicationFailure)
+TEST_F(MainTest, ReturnsApplicationFailureAndReleasesItsBinding)
 {
     service_result = {false, "Initialization failed"};
-    created = initialized = 0;
     EXPECT_EQ(DoubleClickHotkeyMain(), 1);
-    EXPECT_EQ(created, 1);
-    EXPECT_EQ(initialized, 0);
+    EXPECT_EQ(lifecycle, (std::vector<std::string>{"created", "run", "destroyed"}));
 }
 } // namespace double_click_hotkey
